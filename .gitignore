@@ -1,0 +1,14 @@
+# Dependencies
+/node_modules
+
+# Cache
+.eslintcache
+
+# Build folder
+/build
+/dist
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
