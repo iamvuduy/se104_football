@@ -10,7 +10,9 @@ app.use(express.json()); // for parsing application/json
 
 // Routes
 const authRoutes = require('./routes/auth');
+const usersRoutes = require('./routes/users');
 const authMiddleware = require('./middleware/auth');
+const adminMiddleware = require('./middleware/admin');
 
 app.get('/', (req, res) => {
     res.send('Backend server is running.');
@@ -21,5 +23,8 @@ app.use('/api/auth', authRoutes);
 
 // Protected routes
 app.use('/api/teams', authMiddleware, teamRoutes);
+
+// Admin-only routes
+app.use('/api/users', authMiddleware, adminMiddleware, usersRoutes);
 
 module.exports = app;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import NotificationModal from './NotificationModal';
 
 const TeamDetails = () => {
     const [team, setTeam] = useState(null);
@@ -8,6 +9,15 @@ const TeamDetails = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const { id } = useParams();
+    const navigate = useNavigate();
+    const [notification, setNotification] = useState({ isOpen: false, type: '', message: '' });
+
+    const handleCloseNotification = () => {
+        setNotification({ isOpen: false, type: '', message: '' });
+        if (notification.type === 'success') {
+            navigate('/teams');
+        }
+    };
 
     useEffect(() => {
         const fetchTeamDetails = async () => {
@@ -25,13 +35,36 @@ const TeamDetails = () => {
         fetchTeamDetails();
     }, [id]);
 
+    const handleDelete = async () => {
+        if (window.confirm('Are you sure you want to delete this team?')) {
+            try {
+                await axios.delete(`http://localhost:3001/api/teams/${id}`);
+                setNotification({ isOpen: true, type: 'success', message: 'Team deleted successfully!' });
+            } catch (err) {
+                setNotification({ isOpen: true, type: 'error', message: 'Failed to delete team.' });
+            }
+        }
+    };
+
     if (loading) return <p>Loading...</p>;
     if (error) return <p>Error: {error}</p>;
     if (!team) return <p>Team not found.</p>;
 
     return (
         <div>
-            <h2 className="mb-3">Chi tiết đội bóng: {team.name}</h2>
+            <NotificationModal 
+                isOpen={notification.isOpen} 
+                type={notification.type} 
+                message={notification.message} 
+                onClose={handleCloseNotification} 
+            />
+            <div className="d-flex justify-content-between align-items-center mb-3">
+                <h2 className="mb-0">Chi tiết đội bóng: {team.name}</h2>
+                <div>
+                    <Link to={`/teams/${id}/edit`} className="btn btn-primary me-2">Sửa</Link>
+                    <button onClick={handleDelete} className="btn btn-danger">Xóa</button>
+                </div>
+            </div>
             <p><strong>Sân nhà:</strong> {team.home_stadium}</p>
             
             <h3 className="mt-4 mb-3">Danh sách cầu thủ</h3>

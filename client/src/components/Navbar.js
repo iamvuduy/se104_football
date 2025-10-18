@@ -24,11 +24,16 @@ const Navbar = () => {
               <NavLink className="nav-link" to="/">Trang chủ</NavLink>
             </li>
             <li className="nav-item">
-              <NavLink className="nav-link" to="/register">Tiếp nhận hồ sơ</NavLink>
+              <NavLink className="nav-link" to="/register-team">Tiếp nhận hồ sơ</NavLink>
             </li>
             <li className="nav-item">
               <NavLink className="nav-link" to="/teams">Danh sách đội</NavLink>
             </li>
+            {user && user.role === 'admin' && (
+              <li className="nav-item">
+                <NavLink className="nav-link" to="/admin/users">Quản lý tài khoản</NavLink>
+              </li>
+            )}
           </ul>
           {user && (
             <div className="d-flex align-items-center">

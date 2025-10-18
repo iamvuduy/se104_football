@@ -115,4 +115,81 @@ router.get('/debug-teams', (req, res) => {
     });
 });
 
+
+// PUT /api/teams/:id - Update a team's details
+router.put('/:id', (req, res) => {
+    const teamId = req.params.id;
+    const { teamName, homeStadium, players } = req.body;
+
+    if (!teamName || !homeStadium || !players || !Array.isArray(players) || players.length === 0) {
+        return res.status(400).json({ error: 'Invalid data provided.' });
+    }
+
+    const updateTeamSql = `UPDATE teams SET name = ?, home_stadium = ? WHERE id = ?`;
+
+    db.run(updateTeamSql, [teamName, homeStadium, teamId], function(err) {
+        if (err) {
+            console.error('Error updating team:', err.message);
+            return res.status(500).json({ error: 'Could not update team.' });
+        }
+
+        const deletePlayersSql = `DELETE FROM players WHERE team_id = ?`;
+        db.run(deletePlayersSql, [teamId], (err) => {
+            if (err) {
+                console.error('Error deleting old players:', err.message);
+                return res.status(500).json({ error: 'Could not update team players.' });
+            }
+
+            const insertPlayerSql = `INSERT INTO players (team_id, name, dob, type, notes) VALUES (?, ?, ?, ?, ?)`;
+            (async () => {
+                try {
+                    for (const player of players) {
+                        await new Promise((resolve, reject) => {
+                            const { name, dob, type, notes } = player;
+                            db.run(insertPlayerSql, [teamId, name, dob, type, notes], (err) => {
+                                if (err) {
+                                    console.error('Error inserting player:', err.message);
+                                    reject(err);
+                                } else {
+                                    resolve();
+                                }
+                            });
+                        });
+                    }
+                    res.status(200).json({ message: 'Team updated successfully!', teamId: teamId });
+                } catch (err) {
+                    res.status(500).json({ error: 'An error occurred while updating players.' });
+                }
+            })();
+        });
+    });
+});
+
+// DELETE /api/teams/:id - Delete a team
+router.delete('/:id', (req, res) => {
+    const teamId = req.params.id;
+
+    const deletePlayersSql = `DELETE FROM players WHERE team_id = ?`;
+    db.run(deletePlayersSql, [teamId], (err) => {
+        if (err) {
+            console.error('Error deleting players:', err.message);
+            return res.status(500).json({ error: 'Could not delete team players.' });
+        }
+
+        const deleteTeamSql = `DELETE FROM teams WHERE id = ?`;
+        db.run(deleteTeamSql, [teamId], function(err) {
+            if (err) {
+                console.error('Error deleting team:', err.message);
+                return res.status(500).json({ error: 'Could not delete team.' });
+            }
+
+            if (this.changes === 0) {
+                return res.status(404).json({ error: 'Team not found.' });
+            }
+
+            res.status(200).json({ message: 'Team deleted successfully!' });
+        });
+    });
+});
+
 module.exports = router;
