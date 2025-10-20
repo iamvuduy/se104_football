@@ -1,14 +1,29 @@
 import React from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import Navbar from "./Navbar";
 
 const Layout = () => {
+  const location = useLocation();
+
+  const fluidLayoutPaths = [
+    '/register-team',
+    '/teams', 
+    '/admin/users',
+    '/admin/schedules',
+  ];
+
+  const useFluidLayout = fluidLayoutPaths.some(path => location.pathname.startsWith(path));
+
   return (
     <>
       <Navbar />
-      <div className="container mt-4">
-        <Outlet /> {/* Child routes will render here */}
-      </div>
+      {useFluidLayout ? (
+        <Outlet />
+      ) : (
+        <div className="container mt-4">
+          <Outlet />
+        </div>
+      )}
     </>
   );
 };

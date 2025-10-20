@@ -25,7 +25,7 @@ router.get('/', (req, res) => {
             console.error('Error fetching teams:', err.message);
             return res.status(500).json({ error: 'Failed to fetch teams.' });
         }
-        res.json({ teams: rows });
+        res.json({ message: 'success', data: rows });
     });
 });
 
@@ -111,7 +111,7 @@ router.get('/debug-teams', (req, res) => {
             return;
         }
         console.log('DEBUG DATA:', rows);
-        res.json({ teams: rows });
+        res.json({ message: 'success', data: rows });
     });
 });
 

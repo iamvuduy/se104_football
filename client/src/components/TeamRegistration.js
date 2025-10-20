@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import axios from "axios";
 import NotificationModal from "./NotificationModal";
 import "./TeamRegistration.css";
+import { FaClipboardList, FaUsers, FaHistory, FaPlus, FaTrash } from 'react-icons/fa';
 
 const TeamRegistration = () => {
   const [notification, setNotification] = useState({ isOpen: false, type: '', message: '' });
@@ -27,8 +28,8 @@ const TeamRegistration = () => {
   const fetchTeamHistory = async () => {
     try {
       setHistoryLoading(true);
-      const response = await axios.get("http://localhost:3001/api/teams");
-      setTeamHistory((response.data.teams || []).slice(-5).reverse());
+      const response = await axios.get("/api/teams");
+      setTeamHistory((response.data.data || []).slice(-5).reverse());
     } catch (error) {
       console.error("Failed to fetch team history:", error);
       setNotification({ isOpen: true, type: 'error', message: 'Không thể tải lịch sử đội bóng.' });
@@ -79,9 +80,8 @@ const TeamRegistration = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    const warningMessages = []; // Changed from errorMessages to warningMessages for clarity
+    const warningMessages = [];
 
-    // Validate team name and home stadium
     if (!teamName.trim()) newErrors.teamName = true;
     if (!homeStadium.trim()) newErrors.homeStadium = true;
     if (newErrors.teamName || newErrors.homeStadium) {
@@ -95,11 +95,9 @@ const TeamRegistration = () => {
 
     players.forEach((player, index) => {
       const playerError = {};
-      // Validate player name and DOB
       if (!player.name.trim()) playerError.name = true;
       if (!player.dob) playerError.dob = true;
 
-      // Validate player age
       if (player.dob) {
         const birthYear = new Date(player.dob).getFullYear();
         const currentYear = new Date().getFullYear();
@@ -136,9 +134,7 @@ const TeamRegistration = () => {
     }
 
     if (foreignPlayers > 3) {
-      warningMessages.push(
-        "Số lượng cầu thủ nước ngoài không được vượt quá 3."
-      );
+      warningMessages.push("Số lượng cầu thủ nước ngoài không được vượt quá 3.");
     }
 
     setErrors(newErrors);
@@ -155,9 +151,9 @@ const TeamRegistration = () => {
       return;
     }
 
-    setErrors({}); // Clear errors on successful submission
+    setErrors({});
     try {
-      const response = await axios.post("http://localhost:3001/api/teams", {
+      const response = await axios.post("/api/teams", {
         teamName,
         homeStadium,
         players,
@@ -191,44 +187,35 @@ const TeamRegistration = () => {
         onClose={handleCloseNotification} 
       />
       <div className="row">
-        {/* Form Column */}
-        <div className="col-lg-8">
+        <div className="col-lg-8 mb-3 mb-lg-0">
           <div className="registration-form-card">
-            <h2 className="mb-4">Hồ Sơ Đội Bóng</h2>
+            <h3 className="mb-3"><FaClipboardList /> Hồ Sơ Đội Bóng</h3>
             <form onSubmit={handleSubmit} noValidate>
-              <div className="row mb-4">
+              <div className="row mb-3">
                 <div className="col-md-6">
-                  <label htmlFor="teamName" className="form-label">
-                    Tên đội
-                  </label>
+                  <label htmlFor="teamName" className="form-label">Tên đội</label>
                   <input
                     type="text"
                     id="teamName"
-                    className={`form-control ${
-                      errors.teamName ? "is-invalid" : ""
-                    }`}
+                    className={`form-control ${errors.teamName ? "is-invalid" : ""}`}
                     value={teamName}
                     onChange={(e) => setTeamName(e.target.value)}
                     required
                   />
                 </div>
                 <div className="col-md-6">
-                  <label htmlFor="homeStadium" className="form-label">
-                    Sân nhà
-                  </label>
+                  <label htmlFor="homeStadium" className="form-label">Sân nhà</label>
                   <input
                     type="text"
                     id="homeStadium"
-                    className={`form-control ${
-                      errors.homeStadium ? "is-invalid" : ""
-                    }`}
+                    className={`form-control ${errors.homeStadium ? "is-invalid" : ""}`}
                     value={homeStadium}
                     onChange={(e) => setHomeStadium(e.target.value)}
                     required
                   />
                 </div>
               </div>
-              <h3 className="mt-4 mb-3">Danh sách cầu thủ</h3>
+              <h3 className="mt-3 mb-3"><FaUsers /> Danh sách cầu thủ</h3>
               <div className="table-responsive">
                 <table className="table player-table">
                   <thead>
@@ -249,9 +236,7 @@ const TeamRegistration = () => {
                           <input
                             type="text"
                             name="name"
-                            className={`form-control ${
-                              errors.players?.[index]?.name ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.players?.[index]?.name ? "is-invalid" : ""}`}
                             value={player.name}
                             onChange={(e) => handlePlayerChange(index, e)}
                             required
@@ -261,9 +246,7 @@ const TeamRegistration = () => {
                           <input
                             type="date"
                             name="dob"
-                            className={`form-control ${
-                              errors.players?.[index]?.dob ? "is-invalid" : ""
-                            }`}
+                            className={`form-control ${errors.players?.[index]?.dob ? "is-invalid" : ""}`}
                             value={player.dob}
                             onChange={(e) => handlePlayerChange(index, e)}
                             required
@@ -295,7 +278,7 @@ const TeamRegistration = () => {
                             className="btn btn-danger"
                             onClick={() => handleRemovePlayer(index)}
                           >
-                            ✖
+                            <FaTrash />
                           </button>
                         </td>
                       </tr>
@@ -308,13 +291,13 @@ const TeamRegistration = () => {
                   </tbody>
                 </table>
               </div>
-              <div className="d-flex justify-content-between align-items-center mt-4">
+              <div className="d-flex justify-content-between align-items-center mt-3">
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={handleAddPlayer}
                 >
-                  + Thêm cầu thủ
+                  <FaPlus /> Thêm cầu thủ
                 </button>
                 <button type="submit" className="btn btn-primary btn-lg">
                   Đăng ký đội bóng
@@ -324,10 +307,9 @@ const TeamRegistration = () => {
           </div>
         </div>
 
-        {/* History Column */}
         <div className="col-lg-4">
           <div className="registration-form-card">
-            <h3 className="mb-3">Lịch sử đăng ký</h3>
+            <h3 className="mb-3"><FaHistory /> Lịch sử đăng ký</h3>
             {historyLoading ? (
               <p>Loading history...</p>
             ) : teamHistory.length === 0 ? (

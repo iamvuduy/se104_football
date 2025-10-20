@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import './Login.css'; // Reuse login styles for now
+import './Register.css'; // Use the new Register.css
+import { FaUser, FaLock } from 'react-icons/fa';
 
 const Register = () => {
     const [username, setUsername] = useState('');
@@ -29,7 +30,7 @@ const Register = () => {
                 throw new Error(data.message || 'Failed to register');
             }
 
-            setSuccess(data.message);
+            setSuccess(data.message || 'Đăng ký thành công! Vui lòng chờ...');
             setTimeout(() => {
                 navigate('/login');
             }, 2000); // Redirect to login after 2 seconds
@@ -40,38 +41,42 @@ const Register = () => {
     };
 
     return (
-        <div className="login-container">
-            <form onSubmit={handleSubmit} className="login-form">
-                <h2>Register</h2>
-                {error && <p className="error-message">{error}</p>}
-                {success && <p className="success-message">{success}</p>}
-                <div className="input-group">
-                    <input
-                        type="text"
-                        id="username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        required
-                        placeholder=" "
-                    />
-                    <label htmlFor="username">Username</label>
-                </div>
-                <div className="input-group">
-                    <input
-                        type="password"
-                        id="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        placeholder=" "
-                    />
-                    <label htmlFor="password">Password</label>
-                </div>
-                <button type="submit">Register</button>
+        <div className="auth-container">
+            <div className="auth-form-card">
+                <h3>Đăng ký</h3>
+                <form onSubmit={handleSubmit}>
+                    {error && <p className="error-message">{error}</p>}
+                    {success && <p className="success-message">{success}</p>}
+                    <div className="input-group">
+                        <FaUser className="icon" />
+                        <input
+                            type="text"
+                            id="username"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            required
+                            placeholder=" "
+                        />
+                        <label htmlFor="username">Tên đăng nhập</label>
+                    </div>
+                    <div className="input-group">
+                        <FaLock className="icon" />
+                        <input
+                            type="password"
+                            id="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            placeholder=" "
+                        />
+                        <label htmlFor="password">Mật khẩu</label>
+                    </div>
+                    <button type="submit" className="auth-button">Đăng ký</button>
+                </form>
                 <p className="switch-form-text">
-                    Already have an account? <Link to="/login">Login here</Link>
+                    Đã có tài khoản? <Link to="/login">Đăng nhập tại đây</Link>
                 </p>
-            </form>
+            </div>
         </div>
     );
 };

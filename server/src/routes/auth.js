@@ -30,7 +30,7 @@ router.post('/register', (req, res) => {
             }
 
             // Insert user into database
-            db.run(`INSERT INTO users (username, password) VALUES (?, ?)`, [username, hash], function(err) {
+            db.run(`INSERT INTO users (username, password, role) VALUES (?, ?, ?)`, [username, hash, 'user'], function(err) {
                 if (err) {
                     return res.status(500).json({ message: 'Database error on user creation.', error: err.message });
                 }
@@ -68,7 +68,7 @@ router.post('/login', (req, res) => {
             const payload = {
                 id: user.id,
                 username: user.username,
-                role: user.role
+                role: user.role || 'user'
             };
 
             jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' }, (err, token) => {

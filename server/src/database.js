@@ -52,6 +52,25 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 if (err) console.error('Error creating users table', err.message);
             });
 
+            // Schedules table
+            db.run(`
+                CREATE TABLE IF NOT EXISTS schedules (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    round TEXT NOT NULL,
+                    matchOrder INTEGER NOT NULL,
+                    team1_id INTEGER NOT NULL,
+                    team2_id INTEGER NOT NULL,
+                    date TEXT NOT NULL,
+                    time TEXT NOT NULL,
+                    stadium TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (team1_id) REFERENCES teams(id),
+                    FOREIGN KEY (team2_id) REFERENCES teams(id)
+                )
+            `, (err) => {
+                if (err) console.error('Error creating schedules table', err.message);
+            });
+
             // Insert admin user if not exists
             const bcrypt = require('bcrypt');
             const saltRounds = 10;

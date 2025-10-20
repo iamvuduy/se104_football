@@ -27,7 +27,7 @@ const EditTeam = () => {
   useEffect(() => {
     const fetchTeamData = async () => {
       try {
-        const response = await axios.get(`http://localhost:3001/api/teams/${id}`);
+        const response = await axios.get(`/api/teams/${id}`);
         const { name, home_stadium, players } = response.data;
         setTeamName(name);
         setHomeStadium(home_stadium);
@@ -145,7 +145,7 @@ const EditTeam = () => {
 
     setErrors({});
     try {
-      await axios.put(`http://localhost:3001/api/teams/${id}`, {
+      await axios.put(`/api/teams/${id}`, {
         teamName,
         homeStadium,
         players,
@@ -169,8 +169,8 @@ const EditTeam = () => {
         message={notification.message} 
         onClose={handleCloseNotification} 
       />
-      <div className="registration-form-card" style={{ maxWidth: '1000px', margin: 'auto' }}>
-        <h2 className="mb-4">Chỉnh Sửa Hồ Sơ Đội Bóng</h2>
+      <div className="registration-form-card">
+        <h3 className="mb-4">Chỉnh Sửa Hồ Sơ Đội Bóng</h3>
         <form onSubmit={handleSubmit} noValidate>
           <div className="row mb-4">
             <div className="col-md-6">

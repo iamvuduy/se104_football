@@ -12,6 +12,7 @@ import Register from './components/Register';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import UserManagement from './components/UserManagement';
+import ScheduleManagement from './components/ScheduleManagement';
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
               <Route path="/teams/:id" element={<TeamDetails />} />
               <Route path="/teams/:id/edit" element={<EditTeam />} /> {/* Add this route */}
               <Route path="/admin/users" element={<UserManagement />} />
+              <Route path="/admin/schedules" element={<ScheduleManagement />} />
             </Route>
           </Route>
 
