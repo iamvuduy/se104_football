@@ -49,7 +49,21 @@ const ScheduleManagement = () => {
     };
 
     const handleChange = (e) => {
-        setForm({ ...form, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        let newForm = { ...form, [name]: value };
+
+        if (name === 'team1_id') {
+            if (value) {
+                const selectedTeam = teams.find(team => team.id === parseInt(value));
+                if (selectedTeam) {
+                    newForm.stadium = selectedTeam.home_stadium;
+                }
+            } else {
+                newForm.stadium = ''; // Reset stadium if no team is selected
+            }
+        }
+
+        setForm(newForm);
     };
 
     const resetForm = () => {
@@ -117,10 +131,10 @@ const ScheduleManagement = () => {
                             <input name="round" className="form-control" value={form.round} onChange={handleChange} placeholder="Vòng thi đấu" required />
                         </div>
                         <div className="col-md-4">
-                            <input name="matchOrder" className="form-control" value={form.matchOrder} onChange={handleChange} placeholder="STT trận" type="number" required />
+                            <input name="matchOrder" className="form-control" value={form.matchOrder} onChange={handleChange} placeholder="STT trận" type="text" inputMode="numeric" pattern="[0-9]*" required />
                         </div>
                         <div className="col-md-4">
-                            <input name="stadium" className="form-control" value={form.stadium} onChange={handleChange} placeholder="Sân" required />
+                            <input name="stadium" className="form-control" value={form.stadium} onChange={handleChange} placeholder="Sân" required readOnly />
                         </div>
                         <div className="col-md-6">
                             <select name="team1_id" className="form-select" value={form.team1_id} onChange={handleChange} required>

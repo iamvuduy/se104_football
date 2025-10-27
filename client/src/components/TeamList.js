@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import "./TeamRegistration.css"; // Import the template styles
-import { MdStadium } from 'react-icons/md';
+import { FaFutbol } from 'react-icons/fa';
 
 const TeamList = () => {
   const [teams, setTeams] = useState([]);
@@ -50,7 +50,7 @@ const TeamList = () => {
   return (
     <div className="registration-container">
       <div className="registration-form-card">
-<h3 className="mb-4"><MdStadium /> Danh sách đội bóng</h3>
+<h3 className="mb-4"><FaFutbol /> Danh sách đội bóng</h3>
         {teams.length === 0 ? (
           <p>Chưa có đội bóng nào được đăng ký.</p>
         ) : (

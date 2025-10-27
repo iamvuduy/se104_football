@@ -1,20 +1,23 @@
 .dashboard-card {
-    transition: transform .2s;
-    cursor: pointer;
+  transition: transform 0.2s;
+  cursor: pointer;
 }
-
 .dashboard-card:hover {
-    transform: scale(1.05);
+  transform: scale(1.05);
 }
-
 .dashboard-card .card-body {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 30px;
 }
 
-.dashboard-card i {
-    font-size: 3rem;
-    margin-bottom: 1rem;
+.feature-card i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
 }

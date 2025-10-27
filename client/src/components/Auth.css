@@ -1,0 +1,48 @@
+/* Auth.css - Unified styles for Login, Register, etc. */
+
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh; 
+    padding: 2rem;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 450px;
+    padding: 2rem;
+    background-color: var(--secondary-bg);
+    border: 1px solid var(--subtle-bg-border);
+    color: var(--text-light);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    border-radius: 15px;
+}
+
+.auth-card .form-label {
+    font-weight: bold;
+    color: var(--text-light);
+}
+
+.auth-card .btn {
+    width: 100%;
+    padding: 0.75rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    background-color: var(--accent-color);
+    color: var(--text-light);
+    border: none;
+}
+
+.auth-switch-link {
+    display: block;
+    text-align: center;
+    margin-top: 1.5rem;
+    color: var(--subtle-bg-border);
+}
+
+.auth-switch-link a {
+    color: var(--accent-color);
+    font-weight: bold;
+}

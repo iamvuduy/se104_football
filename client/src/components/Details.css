@@ -1,4 +1,4 @@
-/* client/src/components/TeamRegistration.css */
+/* client/src/components/Details.css */
 
 :root {
     --font-heading: 'Oswald', sans-serif;
@@ -14,33 +14,24 @@
 
 .registration-container {
     font-family: var(--font-body);
-    /* 
-      BACKGROUND IMAGE: For a better look, replace the gradient with a real image.
-      Find a royalty-free image of a football pitch and uncomment the following lines:
-      background: url('/path/to/your/football-pitch.jpg') no-repeat center center fixed;
-      background-size: cover;
-    */
-    background: linear-gradient(to bottom, rgba(31, 40, 51, 0.9), rgba(31, 40, 51, 0.9)), 
-                radial-gradient(ellipse at center, #2a5c3d 0%, #1f2833 70%);
+    background: var(--off-white);
     padding: 1.5rem;
     min-height: calc(100vh - 56px);
-    color: var(--light-text);
+    color: var(--dark-blue);
 }
 
 .registration-form-card {
-    background: var(--card-bg);
+    background: #fff;
     border-radius: 10px;
     padding: 1.5rem;
-    border: 1px solid var(--border-color);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    border: 1px solid #ddd;
     margin-bottom: 2rem;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 .registration-form-card h2, .registration-form-card h3 {
     font-family: var(--font-heading);
-    color: var(--green-accent);
+    color: var(--dark-blue);
     text-transform: uppercase;
     letter-spacing: 1.5px;
     font-weight: 700;
@@ -53,25 +44,25 @@
     font-family: var(--font-heading);
     font-weight: 400;
     text-transform: uppercase;
-    color: var(--light-text);
+    color: var(--dark-blue);
     margin-bottom: 0.5rem;
     font-size: 0.9rem;
 }
 
 .form-control, .form-select {
-    background-color: rgba(0,0,0,0.3);
-    color: var(--light-text);
-    border: 1px solid var(--border-color);
+    background-color: #fff;
+    color: var(--dark-blue);
+    border: 1px solid #ccc;
     border-radius: 4px;
     padding: 0.6rem 1rem;
     font-family: var(--font-body);
 }
 
 .form-control:focus, .form-select:focus {
-    background-color: rgba(0,0,0,0.4);
-    color: #fff;
-    border-color: var(--green-accent);
-    box-shadow: 0 0 15px rgba(0, 255, 135, 0.2);
+    background-color: #fff;
+    color: var(--dark-blue);
+    border-color: var(--primary-green);
+    box-shadow: 0 0 5px rgba(39, 174, 96, 0.5);
 }
 
 .btn-primary {
@@ -95,33 +86,34 @@
 
 .btn-secondary {
     font-family: var(--font-heading);
-    background: #495057;
+    background: #6c757d;
     border: none;
-    color: var(--light-text);
+    color: #fff;
     text-transform: uppercase;
 }
 
 .btn-secondary:hover {
-    background: #6c757d;
+    background: #5a6268;
 }
 
 /* Table styles */
 .player-table {
     width: 100%;
     border-collapse: collapse;
+    color: var(--dark-blue);
 }
 
 .player-table thead th {
     font-family: var(--font-heading);
     text-transform: uppercase;
-    color: var(--primary-green);
+    color: var(--dark-blue);
     text-align: left;
     padding: 12px 15px;
-    border-bottom: 2px solid var(--primary-green);
+    border-bottom: 2px solid var(--dark-blue);
 }
 
 .player-table tbody tr {
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid #ddd;
 }
 
 .player-table td {
@@ -129,33 +121,31 @@
     vertical-align: middle;
 }
 
-
-
 .player-table .btn-danger {
     background: transparent;
     border: none;
-    color: #6c757d;
+    color: #dc3545;
     font-size: 1.1rem;
     transition: color 0.3s ease;
 }
 
 .player-table .btn-danger:hover {
-    color: var(--danger-color);
+    color: #c82333;
 }
 
 /* History List */
 .list-group-item {
-    background-color: transparent;
-    border: 1px solid var(--border-color);
-    color: var(--light-text);
+    background-color: #fff;
+    border: 1px solid #ddd;
+    color: var(--dark-blue);
     margin-bottom: 5px;
     border-radius: 5px;
 }
 
 .list-group-item-action:hover {
-    background-color: rgba(39, 174, 96, 0.1);
-    border-color: var(--primary-green);
-    color: var(--green-accent);
+    background-color: #f8f9fa;
+    border-color: #ddd;
+    color: var(--dark-blue);
 }
 
 .badge.bg-primary {
@@ -176,43 +166,29 @@
   outline-offset: -1px;
 }
 
-/* Override Bootstrap table styles for a dark theme */
-.player-table {
-    color: var(--light-text); /* Set default text color for the table */
-    background-color: transparent; /* Make table background transparent */
-}
-
+/* Override Bootstrap table styles for a light theme */
 .player-table th,
 .player-table td {
-    background-color: transparent !important; /* Important to override Bootstrap's td background */
-    border-color: var(--border-color); /* Use consistent border color */
+    background-color: transparent !important;
+    border-color: #ddd;
 }
 
-/* Make sure inputs in the table are dark */
+/* Make sure inputs in the table are light */
 .player-table .form-control,
 .player-table .form-select {
-    background-color: rgba(0, 0, 0, 0.4);
-    color: var(--light-text);
-    border-color: var(--border-color);
+    background-color: #fff;
+    color: var(--dark-blue);
+    border-color: #ccc;
 }
 
 .player-table .form-control:focus,
 .player-table .form-select:focus {
-    background-color: rgba(0, 0, 0, 0.6);
-    border-color: var(--green-accent);
-}
-
-/* Adjust delete button color for better contrast */
-.player-table .btn-danger {
-    color: #9a9a9a; /* Lighter gray for better visibility */
-}
-
-.player-table .btn-danger:hover {
-    color: var(--danger-color);
+    background-color: #fff;
+    border-color: var(--primary-green);
 }
 
 /* Style for select dropdown options */
 .player-table .form-select option {
-    background: var(--dark-bg);
-    color: var(--light-text);
+    background: #fff;
+    color: var(--dark-blue);
 }

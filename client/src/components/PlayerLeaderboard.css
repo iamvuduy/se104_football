@@ -1,0 +1,32 @@
+.leaderboard-table {
+    color: var(--text-light);
+    background-color: var(--primary-bg);
+}
+
+.leaderboard-table thead th {
+    background-color: var(--secondary-bg);
+    color: var(--text-light);
+    border-bottom: 2px solid var(--accent-color);
+}
+
+.sortable-header {
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+    user-select: none; /* Prevent text selection on click */
+}
+
+.sortable-header:hover {
+    background-color: var(--text-dark);
+}
+
+.leaderboard-table tbody tr {
+    border-bottom: 1px solid var(--subtle-bg-border);
+}
+
+.leaderboard-table tbody tr:nth-of-type(even) {
+    background-color: var(--secondary-bg);
+}
+
+.leaderboard-table tbody tr:hover {
+    background-color: var(--text-dark);
+}

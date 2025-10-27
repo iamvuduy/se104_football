@@ -6,6 +6,7 @@ const Layout = () => {
   const location = useLocation();
 
   const fluidLayoutPaths = [
+    '/',
     '/register-team',
     '/teams', 
     '/admin/users',
@@ -18,7 +19,9 @@ const Layout = () => {
     <>
       <Navbar />
       {useFluidLayout ? (
-        <Outlet />
+        <div className="container-fluid mt-4">
+          <Outlet />
+        </div>
       ) : (
         <div className="container mt-4">
           <Outlet />

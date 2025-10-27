@@ -32,12 +32,29 @@ const getInitialAuthState = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const initialState = getInitialAuthState();
-  const [token, setToken] = useState(initialState.token);
-  const [user, setUser] = useState(initialState.user);
-  const [isAuthenticated, setIsAuthenticated] = useState(
-    initialState.isAuthenticated
-  );
+  const [token, setToken] = useState(localStorage.getItem("token"));
+  const [user, setUser] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      const decodedUser = parseJwt(token);
+      if (decodedUser && decodedUser.exp * 1000 > Date.now()) {
+        setToken(token);
+        setUser(decodedUser);
+        setIsAuthenticated(true);
+        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      } else {
+        localStorage.removeItem("token");
+        setToken(null);
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+    }
+    setLoading(false);
+  }, []);
 
   const login = async (username, password) => {
     try {
@@ -81,6 +98,10 @@ export const AuthProvider = ({ children }) => {
     logout,
     token,
   };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
