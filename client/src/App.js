@@ -13,6 +13,11 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import UserManagement from './components/UserManagement';
 import ScheduleManagement from './components/ScheduleManagement';
+import RecordMatchResult from './components/RecordMatchResult';
+import TeamLeaderboard from './components/TeamLeaderboard';
+import TopScorerLeaderboard from './components/TopScorerLeaderboard';
+import GroupManagement from './components/GroupManagement'; // Import GroupManagement
+import MatchResultList from './components/MatchResultList'; // Import MatchResultList
 
 function App() {
   return (
@@ -33,6 +38,11 @@ function App() {
               <Route path="/teams/:id/edit" element={<EditTeam />} /> {/* Add this route */}
               <Route path="/admin/users" element={<UserManagement />} />
               <Route path="/admin/schedules" element={<ScheduleManagement />} />
+              <Route path="/admin/group-management" element={<GroupManagement />} /> {/* Add this route */}
+              <Route path="/record-result" element={<RecordMatchResult />} />
+              <Route path="/match-results" element={<MatchResultList />} /> {/* Add this route */}
+              <Route path="/team-leaderboard" element={<TeamLeaderboard />} />
+              <Route path="/top-scorer-leaderboard" element={<TopScorerLeaderboard />} />
             </Route>
           </Route>
 

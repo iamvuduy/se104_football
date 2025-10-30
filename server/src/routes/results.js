@@ -1,26 +1,34 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
+const admin = require('../middleware/admin');
 
 // POST /api/results - Record a new match result
-router.post('/', (req, res) => {
-    const { team1Name, team2Name, score, stadium, matchDate, matchTime, goals } = req.body;
+router.post('/', admin, (req, res) => {
+    const { matchInfo, goals } = req.body;
 
     // Basic validation
-    if (!team1Name || !team2Name || !score || !matchDate || !matchTime || !Array.isArray(goals)) {
-        return res.status(400).json({ error: 'Invalid data provided. Please fill all required fields.' });
+    if (!matchInfo || !goals || !Array.isArray(goals)) {
+        return res.status(400).json({ error: 'Invalid data structure provided.' });
     }
 
-    db.serialize(() => {
-        // Use a transaction to ensure all or nothing is saved
-        db.run('BEGIN TRANSACTION');
+    const { team1, team2, score, stadium, date, time } = matchInfo;
+
+    if (!team1 || !team2 || !score || !date || !time) {
+        return res.status(400).json({ error: 'Invalid match info provided. Please fill all required fields.' });
+    }
+
+    db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+            return res.status(500).json({ error: 'Could not start transaction.' });
+        }
 
         const insertMatchSql = `
-            INSERT INTO match_results (team1_name, team2_name, score, stadium, match_date, match_time)
+            INSERT INTO match_results (team1_id, team2_id, score, stadium, match_date, match_time)
             VALUES (?, ?, ?, ?, ?, ?)
         `;
 
-        db.run(insertMatchSql, [team1Name, team2Name, score, stadium, matchDate, matchTime], function(err) {
+        db.run(insertMatchSql, [team1, team2, score, stadium, date, time], function(err) {
             if (err) {
                 db.run('ROLLBACK');
                 console.error('Error inserting match result:', err.message);
@@ -29,38 +37,69 @@ router.post('/', (req, res) => {
 
             const matchResultId = this.lastID;
             const insertGoalSql = `
-                INSERT INTO goals (match_result_id, player_name, team_name, goal_type, goal_time)
+                INSERT INTO goals (match_result_id, player_id, team_id, goal_type, goal_time)
                 VALUES (?, ?, ?, ?, ?)
             `;
 
-            // Prepare statement for inserting goals
             const stmt = db.prepare(insertGoalSql);
+            let goalError = null;
 
             for (const goal of goals) {
-                // Validate goal object
-                if (!goal.playerName || !goal.teamName || !goal.goalType || goal.goalTime === undefined) {
-                    db.run('ROLLBACK');
-                    return res.status(400).json({ error: `Invalid goal data provided for player ${goal.playerName}.` });
+                if (!goal.player || !goal.team || !goal.type || goal.time === undefined) {
+                    goalError = 'Invalid goal data provided.';
+                    break;
                 }
-                stmt.run(matchResultId, goal.playerName, goal.teamName, goal.goalType, goal.goalTime, (err) => {
+                stmt.run(matchResultId, goal.player, goal.team, goal.type, goal.time, (err) => {
                     if (err) {
-                        // Error will be caught by the finalizer's error handler
-                        // No need to rollback here as the loop will be broken by the error in finalize
+                        goalError = 'An error occurred while saving the goals.';
                     }
                 });
             }
 
             stmt.finalize((err) => {
-                if (err) {
+                if (err || goalError) {
                     db.run('ROLLBACK');
-                    console.error('Error inserting goals:', err.message);
-                    // The CHECK constraint failure gives a generic SQLITE_CONSTRAINT error, so a custom message is better.
-                    return res.status(400).json({ error: 'An error occurred while saving the goals. Please check that goal types are A, B, or C, and times are between 0-90.' });
+                    console.error('Error inserting goals:', err ? err.message : goalError);
+                    return res.status(500).json({ error: err ? 'An error occurred while saving the goals.' : goalError });
                 } else {
-                    db.run('COMMIT');
-                    res.status(201).json({ message: 'Match result recorded successfully!', matchResultId: matchResultId });
+                    db.run('COMMIT', (err) => {
+                        if (err) {
+                            db.run('ROLLBACK');
+                            return res.status(500).json({ error: 'Could not commit transaction.' });
+                        }
+                        res.status(201).json({ message: 'Match result recorded successfully!', matchResultId: matchResultId });
+                    });
                 }
             });
+        });
+    });
+});
+
+// GET /api/results - Get all match results
+router.get('/', (req, res) => {
+    const sql = `
+        SELECT 
+            mr.id,
+            t1.name AS team1_name,
+            t2.name AS team2_name,
+            mr.score,
+            mr.stadium,
+            mr.match_date,
+            mr.match_time
+        FROM match_results mr
+        JOIN teams t1 ON mr.team1_id = t1.id
+        JOIN teams t2 ON mr.team2_id = t2.id
+        ORDER BY mr.match_date DESC, mr.match_time DESC
+    `;
+
+    db.all(sql, [], (err, rows) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        res.json({
+            message: 'success',
+            data: rows
         });
     });
 });

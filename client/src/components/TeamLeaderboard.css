@@ -1,0 +1,35 @@
+.team-leaderboard-container {
+  padding: 2rem;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+}
+
+.team-leaderboard-container h1 {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.date-picker-container {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.date-picker-container label {
+  margin-right: 0.5rem;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.leaderboard-table th,
+.leaderboard-table td {
+  border: 1px solid #ddd;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.leaderboard-table th {
+  background-color: #f2f2f2;
+}

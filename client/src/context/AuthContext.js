@@ -1,8 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
 import axios from "axios";
 
-axios.defaults.baseURL = "http://localhost:3002";
-
 const AuthContext = createContext(null);
 
 // Helper to parse JWT

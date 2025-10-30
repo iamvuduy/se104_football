@@ -1,205 +1,406 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-import './RecordMatchResult.css';
+import React, { useState, useEffect } from "react";
+import "./RecordMatchResult.css";
+import { FaPlus, FaTrash } from "react-icons/fa";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
+import NotificationModal from "./NotificationModal";
 
 const RecordMatchResult = () => {
-    const [allTeams, setAllTeams] = useState([]);
-    const [team1Name, setTeam1Name] = useState('');
-    const [team2Name, setTeam2Name] = useState('');
-    const [score, setScore] = useState('');
-    const [stadium, setStadium] = useState('');
-    const [matchDate, setMatchDate] = useState('');
-    const [matchTime, setMatchTime] = useState('');
-    const [goals, setGoals] = useState([]);
-    const [error, setError] = useState(null);
-    const [success, setSuccess] = useState(null);
-    const navigate = useNavigate();
+  const { token } = useAuth(); // Get the auth token
+  const navigate = useNavigate();
 
-    useEffect(() => {
-        axios.get('/api/teams')
-            .then(response => {
-                if (response.data && response.data.data) {
-                    setAllTeams(response.data.data);
-                }
-            })
-            .catch(err => {
-                console.error("Failed to fetch teams:", err);
-                setError('Không thể tải danh sách đội bóng.');
-            });
-    }, []);
+  const [showModal, setShowModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
+  const [modalType, setModalType] = useState("success"); // 'success' or 'error'
 
-    const handleAddGoal = () => {
-        setGoals([...goals, { playerName: '', teamName: team1Name || '', goalType: 'A', goalTime: '' }]);
-    };
+  const [matchInfo, setMatchInfo] = useState({
+    team1: "",
+    team2: "",
+    score: "",
+    stadium: "",
+    date: "",
+    time: "",
+  });
 
-    const handleRemoveGoal = (index) => {
-        const newGoals = goals.filter((_, i) => i !== index);
-        setGoals(newGoals);
-    };
+  const [teams, setTeams] = useState([]);
+  const [team1Players, setTeam1Players] = useState([]);
+  const [team2Players, setTeam2Players] = useState([]);
 
-    const handleGoalChange = (index, field, value) => {
-        const newGoals = [...goals];
-        newGoals[index][field] = value;
-        setGoals(newGoals);
-    };
+  useEffect(() => {
+    if (token) {
+      // Only fetch if token is available
+      // Fetch all teams
+      fetch("/api/teams", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.message === "success") {
+            setTeams(data.data);
+          }
+        })
+        .catch((err) => console.error("Error fetching teams:", err));
+    }
+  }, [token]); // Rerun effect if token changes
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError(null);
-        setSuccess(null);
-
-        if (!team1Name || !team2Name) {
-            setError('Vui lòng chọn cả Đội 1 và Đội 2.');
-            return;
+  const fetchPlayers = (teamId, teamNumber) => {
+    if (!teamId || !token) return;
+    fetch(`/api/teams/${teamId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (teamNumber === 1) {
+          setTeam1Players(data.players || []);
+        } else {
+          setTeam2Players(data.players || []);
         }
+      })
+      .catch((err) =>
+        console.error(`Error fetching players for team ${teamId}:`, err)
+      );
+  };
 
-        if (team1Name === team2Name) {
-            setError('Đội 1 và Đội 2 không được trùng nhau.');
-            return;
-        }
+  const [goals, setGoals] = useState([
+    { player: "", team: "", type: "A", time: "" },
+  ]);
 
-        // Validate goal times before submitting
-        for (const goal of goals) {
-            const time = parseInt(goal.goalTime, 10);
-            if (isNaN(time) || time < 0 || time > 90) {
-                setError(`Thời điểm ghi bàn không hợp lệ cho cầu thủ "${goal.playerName || 'chưa nhập tên'}". Vui lòng nhập một số từ 0 đến 90.`);
-                return;
-            }
-        }
+  const handleMatchInfoChange = (e) => {
+    const { name, value } = e.target;
+    const newMatchInfo = { ...matchInfo, [name]: value };
 
-        const resultData = { team1Name, team2Name, score, stadium, matchDate, matchTime, goals };
+    if (name === "team1") {
+      fetchPlayers(value, 1);
+      const selectedTeam = teams.find((t) => t.id === parseInt(value));
+      if (selectedTeam) {
+        newMatchInfo.stadium = selectedTeam.home_stadium;
+      }
+    } else if (name === "team2") {
+      fetchPlayers(value, 2);
+    }
 
-        try {
-            await axios.post('/api/results', resultData);
-            setSuccess('Đã lưu kết quả trận đấu thành công!');
-            setTeam1Name('');
-            setTeam2Name('');
-            setScore('');
-            setStadium('');
-            setMatchDate('');
-            setMatchTime('');
-            setGoals([]);
-            setTimeout(() => navigate('/'), 2000);
-        } catch (err) {
-            console.error("Failed to save match result:", err);
-            setError(err.response?.data?.error || 'Lỗi không xác định. Vui lòng thử lại.');
-        }
-    };
+    setMatchInfo(newMatchInfo);
+  };
 
-    const availableTeamsForTeam1 = allTeams.filter(team => team.name !== team2Name);
-    const availableTeamsForTeam2 = allTeams.filter(team => team.name !== team1Name);
+  const handleGoalChange = (index, e) => {
+    const newGoals = [...goals];
+    newGoals[index][e.target.name] = e.target.value;
+    setGoals(newGoals);
+  };
 
-    return (
-        <div className="container mt-4 record-result-container">
-            <h2>Nhập Kết Quả Thi Đấu</h2>
-            <hr />
+  const handleAddGoal = () => {
+    setGoals([...goals, { player: "", team: "", type: "A", time: "" }]);
+  };
 
-            {error && <div className="alert alert-danger">{error}</div>}
-            {success && <div className="alert alert-success">{success}</div>}
+  const handleRemoveGoal = (index) => {
+    const newGoals = [...goals];
+    newGoals.splice(index, 1);
+    setGoals(newGoals);
+  };
 
-            <form onSubmit={handleSubmit}>
-                <h4>1. Thông tin chung</h4>
-                <div className="row">
-                    <div className="col-md-6 mb-3">
-                        <label htmlFor="team1Name" className="form-label">Đội 1</label>
-                        <select id="team1Name" className="form-select" value={team1Name} onChange={e => setTeam1Name(e.target.value)} required>
-                            <option value="">Chọn Đội 1</option>
-                            {availableTeamsForTeam1.map(team => (
-                                <option key={team.id} value={team.name}>{team.name}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="col-md-6 mb-3">
-                        <label htmlFor="team2Name" className="form-label">Đội 2</label>
-                        <select id="team2Name" className="form-select" value={team2Name} onChange={e => setTeam2Name(e.target.value)} required>
-                            <option value="">Chọn Đội 2</option>
-                            {availableTeamsForTeam2.map(team => (
-                                <option key={team.id} value={team.name}>{team.name}</option>
-                            ))}
-                        </select>
-                    </div>
-                </div>
-                <div className="row">
-                     <div className="col-md-6 mb-3">
-                        <label htmlFor="score" className="form-label">Tỷ số</label>
-                        <input type="text" id="score" className="form-control" placeholder="Ví dụ: 2-1" value={score} onChange={e => setScore(e.target.value)} required />
-                    </div>
-                    <div className="col-md-6 mb-3">
-                        <label htmlFor="stadium" className="form-label">Sân</label>
-                        <input type="text" id="stadium" className="form-control" value={stadium} onChange={e => setStadium(e.target.value)} />
-                    </div>
-                </div>
-                 <div className="row">
-                    <div className="col-md-6 mb-3">
-                        <label htmlFor="matchDate" className="form-label">Ngày</label>
-                        <input type="date" id="matchDate" className="form-control" value={matchDate} onChange={e => setMatchDate(e.target.value)} required />
-                    </div>
-                    <div className="col-md-6 mb-3">
-                        <label htmlFor="matchTime" className="form-label">Giờ</label>
-                        <input type="time" id="matchTime" className="form-control" value={matchTime} onChange={e => setMatchTime(e.target.value)} required />
-                    </div>
-                </div>
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-                <h4 className="mt-4">2. Danh sách bàn thắng</h4>
-                <table className="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>STT</th>
-                            <th>Cầu Thủ</th>
-                            <th>Đội</th>
-                            <th>Loại Bàn Thắng</th>
-                            <th>Thời Điểm (phút)</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {goals.map((goal, index) => (
-                            <tr key={index}>
-                                <td>{index + 1}</td>
-                                <td>
-                                    <input type="text" className="form-control" value={goal.playerName} onChange={e => handleGoalChange(index, 'playerName', e.target.value)} required />
-                                </td>
-                                <td>
-                                    <select className="form-select" value={goal.teamName} onChange={e => handleGoalChange(index, 'teamName', e.target.value)} required>
-                                        <option value="">Chọn đội</option>
-                                        {team1Name && <option value={team1Name}>{team1Name}</option>}
-                                        {team2Name && <option value={team2Name}>{team2Name}</option>}
-                                    </select>
-                                </td>
-                                <td>
-                                    <select className="form-select" value={goal.goalType} onChange={e => handleGoalChange(index, 'goalType', e.target.value)} required>
-                                        <option value="A">A</option>
-                                        <option value="B">B</option>
-                                        <option value="C">C</option>
-                                    </select>
-                                </td>
-                                <td>
-                                    <input 
-                                        type="text" 
-                                        inputMode="numeric" 
-                                        pattern="[0-9]*"
-                                        className="form-control" 
-                                        value={goal.goalTime} 
-                                        onChange={e => handleGoalChange(index, 'goalTime', e.target.value)} 
-                                        required 
-                                    />
-                                </td>
-                                <td className="text-center">
-                                    <button type="button" className="btn btn-danger btn-sm" onClick={() => handleRemoveGoal(index)}>Xóa</button>
-                                </td>
-                            </tr>
+    // Basic validation
+    if (
+      !matchInfo.team1 ||
+      !matchInfo.team2 ||
+      !matchInfo.score ||
+      !matchInfo.stadium ||
+      !matchInfo.date ||
+      !matchInfo.time
+    ) {
+      setModalMessage("Vui lòng điền đầy đủ thông tin trận đấu.");
+      setModalType("error");
+      setShowModal(true);
+      return;
+    }
+
+    // Validate score format and number of goals
+    const scoreParts = matchInfo.score.split('-').map(s => parseInt(s.trim(), 10));
+    if (scoreParts.length !== 2 || isNaN(scoreParts[0]) || isNaN(scoreParts[1])) {
+      setModalMessage("Tỷ số không hợp lệ. Vui lòng nhập theo định dạng 'X-Y'.");
+      setModalType("error");
+      setShowModal(true);
+      return;
+    }
+
+    const totalGoalsInScore = scoreParts[0] + scoreParts[1];
+    if (totalGoalsInScore !== goals.length) {
+      setModalMessage(`Tỷ số là ${matchInfo.score} (${totalGoalsInScore} bàn), nhưng bạn đã nhập ${goals.length} bàn thắng. Vui lòng kiểm tra lại.`);
+      setModalType("error");
+      setShowModal(true);
+      return;
+    }
+
+    if (
+      goals.some(
+        (goal) => !goal.player || !goal.team || !goal.type || goal.time === ""
+      )
+    ) {
+      setModalMessage("Vui lòng điền đầy đủ thông tin cho tất cả các bàn thắng đã nhập.");
+      setModalType("error");
+      setShowModal(true);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/results", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ matchInfo, goals }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setModalMessage("Kết quả trận đấu đã được lưu thành công!");
+        setModalType("success");
+        setShowModal(true);
+        setTimeout(() => {
+          setShowModal(false);
+          navigate("/match-results"); // Redirect to a match results page or similar
+        }, 2000);
+      } else {
+        setModalMessage(
+          data.message || "Đã xảy ra lỗi khi lưu kết quả trận đấu."
+        );
+        setModalType("error");
+        setShowModal(true);
+      }
+    } catch (error) {
+      console.error("Error submitting match result:", error);
+      setModalMessage("Đã xảy ra lỗi mạng hoặc máy chủ.");
+      setModalType("error");
+      setShowModal(true);
+    }
+  };
+
+  const team1Options = teams.filter((t) => t.id !== parseInt(matchInfo.team2));
+  const team2Options = teams.filter((t) => t.id !== parseInt(matchInfo.team1));
+
+  const selectedTeams = teams.filter(
+    (t) =>
+      t.id === parseInt(matchInfo.team1) || t.id === parseInt(matchInfo.team2)
+  );
+
+  return (
+    <div className="registration-container">
+      <div className="registration-form-card">
+        <h3 className="mb-4">Ghi nhận kết quả trận đấu</h3>
+        <form onSubmit={handleSubmit}>
+          {/* Part A: Match Information */}
+          <div className="row g-3 mb-4">
+            <div className="col-md-6">
+              <label htmlFor="team1" className="form-label">
+                Đội 1 (Sân nhà)
+              </label>
+              <select
+                id="team1"
+                name="team1"
+                className="form-select"
+                value={matchInfo.team1}
+                onChange={handleMatchInfoChange}
+              >
+                <option value="">Chọn đội</option>
+                {team1Options.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="col-md-6">
+              <label htmlFor="team2" className="form-label">
+                Đội 2
+              </label>
+              <select
+                id="team2"
+                name="team2"
+                className="form-select"
+                value={matchInfo.team2}
+                onChange={handleMatchInfoChange}
+              >
+                <option value="">Chọn đội</option>
+                {team2Options.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="col-md-6">
+              <label htmlFor="score" className="form-label">
+                Tỷ số
+              </label>
+              <input
+                type="text"
+                id="score"
+                name="score"
+                className="form-control"
+                value={matchInfo.score}
+                onChange={handleMatchInfoChange}
+              />
+            </div>
+            <div className="col-md-6">
+              <label htmlFor="stadium" className="form-label">
+                Sân
+              </label>
+              <input
+                type="text"
+                id="stadium"
+                name="stadium"
+                className="form-control"
+                value={matchInfo.stadium}
+                onChange={handleMatchInfoChange}
+              />
+            </div>
+            <div className="col-md-6">
+              <label htmlFor="date" className="form-label">
+                Ngày
+              </label>
+              <input
+                type="date"
+                id="date"
+                name="date"
+                className="form-control"
+                value={matchInfo.date}
+                onChange={handleMatchInfoChange}
+              />
+            </div>
+            <div className="col-md-6">
+              <label htmlFor="time" className="form-label">
+                Giờ
+              </label>
+              <input
+                type="time"
+                id="time"
+                name="time"
+                className="form-control"
+                value={matchInfo.time}
+                onChange={handleMatchInfoChange}
+              />
+            </div>
+          </div>
+
+          {/* Part B: Goals Table */}
+          <h4 className="mb-3">Danh sách bàn thắng</h4>
+          <div className="table-responsive">
+            <table className="table player-table">
+              <thead>
+                <tr>
+                  <th>STT</th>
+                  <th>Đội</th>
+                  <th>Cầu Thủ</th>
+                  <th>Loại Bàn Thắng</th>
+                  <th>Thời Điểm</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {goals.map((goal, index) => (
+                  <tr key={index}>
+                    <td>{index + 1}</td>
+                    <td>
+                      <select
+                        name="team"
+                        className="form-select"
+                        value={goal.team}
+                        onChange={(e) => handleGoalChange(index, e)}
+                      >
+                        <option value="">Chọn đội</option>
+                        {selectedTeams.map((team) => (
+                          <option key={team.id} value={team.id}>
+                            {team.name}
+                          </option>
                         ))}
-                    </tbody>
-                </table>
-                <button type="button" className="btn btn-primary" onClick={handleAddGoal}>Thêm bàn thắng</button>
+                      </select>
+                    </td>
+                    <td>
+                      <select
+                        name="player"
+                        className="form-select"
+                        value={goal.player}
+                        onChange={(e) => handleGoalChange(index, e)}
+                      >
+                        <option value="">Chọn cầu thủ</option>
+                        {(goal.team === matchInfo.team1
+                          ? team1Players
+                          : team2Players
+                        ).map((player) => (
+                          <option key={player.id} value={player.id}>
+                            {player.name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <select
+                        name="type"
+                        className="form-select"
+                        value={goal.type}
+                        onChange={(e) => handleGoalChange(index, e)}
+                      >
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                      </select>
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        name="time"
+                        className="form-control"
+                        min="0"
+                        max="90"
+                        value={goal.time}
+                        onChange={(e) => handleGoalChange(index, e)}
+                      />
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn btn-danger"
+                        onClick={() => handleRemoveGoal(index)}
+                      >
+                        <FaTrash />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary mt-3"
+            onClick={handleAddGoal}
+          >
+            <FaPlus /> Thêm bàn thắng
+          </button>
 
-                <hr className="my-4" />
-
-                <button type="submit" className="btn btn-success btn-lg">Lưu Kết Quả</button>
-            </form>
-        </div>
-    );
+          <div className="mt-4 d-flex justify-content-end">
+            <button type="submit" className="btn btn-primary">
+              Lưu kết quả
+            </button>
+          </div>
+        </form>
+      </div>
+      <NotificationModal
+        isOpen={showModal}
+        message={modalMessage}
+        type={modalType}
+        onClose={() => setShowModal(false)}
+      />
+    </div>
+  );
 };
 
 export default RecordMatchResult;

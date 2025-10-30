@@ -5,7 +5,9 @@ const router = express.Router();
 
 // GET /api/teams - Fetch all teams
 router.get('/', (req, res) => {
-    const sql = `
+    const { unassigned } = req.query;
+
+    let sql = `
         SELECT
             t.id,
             t.name,
@@ -15,16 +17,29 @@ router.get('/', (req, res) => {
             teams t
         LEFT JOIN
             players p ON t.id = p.team_id
+    `;
+
+    const params = [];
+
+    if (unassigned === 'true') {
+        sql += ' WHERE t.group_id IS NULL';
+    }
+
+    sql += `
         GROUP BY
             t.id
         ORDER BY
             t.id
     `;
-    db.all(sql, [], (err, rows) => {
+
+    db.all(sql, params, (err, rows) => {
         if (err) {
             console.error('Error fetching teams:', err.message);
             return res.status(500).json({ error: 'Failed to fetch teams.' });
         }
+        console.log('SQL:', sql);
+        console.log('Params:', params);
+        console.log('Rows:', rows);
         res.json({ message: 'success', data: rows });
     });
 });
