@@ -177,6 +177,19 @@
   color: #1a2742;
 }
 
+.team-list-code {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(58, 123, 213, 0.18);
+  color: #2f4d9f;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-right: 0.45rem;
+}
+
 .team-list-pill {
   padding: 0.25rem 0.75rem;
   border-radius: 999px;

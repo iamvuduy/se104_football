@@ -50,6 +50,11 @@ const Navbar = () => {
               Danh sách đội
             </NavLink>
           </li>
+          <li className="nav-item">
+            <NavLink className="nav-link" to="/player-lookup">
+              Tra cứu cầu thủ
+            </NavLink>
+          </li>
           <li className="nav-item dropdown" ref={dropdownRef}>
             <span
               className="nav-link"
@@ -93,6 +98,13 @@ const Navbar = () => {
             <li className="nav-item">
               <NavLink className="nav-link" to="/admin/group-management">
                 Bảng đấu
+              </NavLink>
+            </li>
+          )}
+          {user && user.role === "admin" && (
+            <li className="nav-item">
+              <NavLink className="nav-link" to="/admin/tournament-settings">
+                Cài đặt giải đấu
               </NavLink>
             </li>
           )}

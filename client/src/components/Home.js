@@ -110,6 +110,13 @@ const Home = () => {
         roles: ["admin"],
       },
       {
+        to: "/admin/tournament-settings",
+        icon: "bi bi-sliders",
+        title: "Cài đặt giải đấu",
+        description: "Tùy chỉnh quy định giải và áp dụng tức thì.",
+        roles: ["admin"],
+      },
+      {
         to: "/admin/schedules",
         icon: "bi bi-calendar-event",
         title: "Lịch thi đấu",

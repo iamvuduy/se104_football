@@ -1,35 +1,197 @@
-.team-leaderboard-container {
-  padding: 2rem;
-  background-color: #f9f9f9;
-  border-radius: 8px;
+.team-leaderboard-shell {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: calc(100vh - 140px);
+  padding: 3rem 1.25rem 2.5rem;
+  background: none;
 }
 
-.team-leaderboard-container h1 {
-  text-align: center;
-  margin-bottom: 1.5rem;
+.team-leaderboard-card {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 24px 48px rgba(5, 11, 35, 0.45);
+  background: linear-gradient(
+    170deg,
+    rgba(9, 24, 66, 0.94),
+    rgba(13, 32, 82, 0.97)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #f8fbff;
+  backdrop-filter: blur(4px);
 }
 
-.date-picker-container {
-  margin-bottom: 1.5rem;
-  text-align: center;
+.team-leaderboard-header {
+  background: linear-gradient(100deg, #d8ff38 0%, #cfff3b 48%, #b7ff3a 100%);
+  color: #07163c;
+  padding: 1.4rem 1.9rem 1.15rem;
+  text-align: left;
 }
 
-.date-picker-container label {
-  margin-right: 0.5rem;
+.team-leaderboard-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
-.leaderboard-table {
+.team-leaderboard-header h1 {
+  margin: 0.7rem 0 0.3rem;
+  font-size: 1.85rem;
+  letter-spacing: 0.02em;
+}
+
+.team-leaderboard-header p {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.team-leaderboard-table {
   width: 100%;
   border-collapse: collapse;
+  background: transparent;
 }
 
-.leaderboard-table th,
-.leaderboard-table td {
-  border: 1px solid #ddd;
-  padding: 0.75rem;
-  text-align: center;
+.team-leaderboard-table thead tr {
+  background: rgba(6, 21, 55, 0.85);
 }
 
-.leaderboard-table th {
-  background-color: #f2f2f2;
+.team-leaderboard-table th {
+  padding: 0.6rem 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9fb7ff;
+  text-align: left;
+}
+
+.team-leaderboard-table th:nth-child(1) {
+  width: 70px;
+}
+
+.team-leaderboard-table th:nth-child(n + 3) {
+  text-align: right;
+}
+
+.team-leaderboard-row {
+  transition: transform 0.2s ease, background 0.2s ease;
+  background: rgba(9, 29, 76, 0.55);
+}
+
+.team-leaderboard-row:nth-child(even) {
+  background: rgba(9, 26, 68, 0.42);
+}
+
+.team-leaderboard-row:hover {
+  transform: translateX(6px);
+  background: rgba(16, 54, 133, 0.6);
+}
+
+.team-leaderboard-row--leader {
+  background: linear-gradient(
+    110deg,
+    rgba(217, 255, 56, 0.25),
+    rgba(12, 36, 107, 0.85)
+  );
+}
+
+.team-leaderboard-row--top5 {
+  background: rgba(18, 58, 142, 0.6);
+}
+
+.team-leaderboard-table td {
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  vertical-align: middle;
+}
+
+.team-leaderboard-table td:nth-child(n + 3) {
+  text-align: right;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.team-leaderboard-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.team-leaderboard-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.team-leaderboard-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.team-leaderboard-row--leader .team-leaderboard-rank {
+  background: linear-gradient(135deg, #d4ff3e, #b7ff3a);
+  color: #061542;
+}
+
+.team-leaderboard-points {
+  color: #ffffff;
+}
+
+.team-leaderboard-diff {
+  color: #8bff92;
+}
+
+.team-leaderboard-footer {
+  padding: 1.1rem 2.25rem;
+  background: rgba(3, 14, 42, 0.9);
+  font-size: 0.85rem;
+  color: #7f9dff;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.team-leaderboard-loading,
+.team-leaderboard-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+  font-weight: 600;
+  color: #123c8d;
+}
+
+@media (max-width: 600px) {
+  .team-leaderboard-header {
+    padding: 1.4rem 1.5rem 1.15rem;
+  }
+
+  .team-leaderboard-header h1 {
+    font-size: 1.65rem;
+  }
+
+  .team-leaderboard-table th,
+  .team-leaderboard-table td {
+    padding: 0.85rem 1rem;
+  }
+
+  .team-leaderboard-rank {
+    width: 32px;
+    height: 32px;
+    font-size: 0.9rem;
+  }
 }

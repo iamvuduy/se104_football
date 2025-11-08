@@ -1,92 +1,189 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const db = require('../database');
+const db = require("../database");
+const { loadSettings } = require("../services/settingsService");
 
 // GET /api/leaderboard/teams - Get team leaderboard
-router.get('/teams', async (req, res) => {
-    try {
-        const teams = await new Promise((resolve, reject) => {
-            db.all("SELECT * FROM teams", [], (err, rows) => {
-                if (err) reject(err);
-                else resolve(rows);
-            });
-        });
+router.get("/teams", async (req, res) => {
+  try {
+    const settings = await loadSettings();
 
-        const matches = await new Promise((resolve, reject) => {
-            db.all("SELECT * FROM match_results", [], (err, rows) => {
-                if (err) reject(err);
-                else resolve(rows);
-            });
-        });
+    const teams = await new Promise((resolve, reject) => {
+      db.all("SELECT * FROM teams", [], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
 
-        const teamStats = {};
+    const matches = await new Promise((resolve, reject) => {
+      db.all("SELECT * FROM match_results", [], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
 
-        teams.forEach(team => {
-            teamStats[team.id] = {
-                id: team.id,
-                name: team.name,
-                mp: 0,
-                wins: 0,
-                draws: 0,
-                losses: 0,
-                gf: 0,
-                ga: 0,
-                gd: 0,
-                pts: 0
+    const teamStats = {};
+
+    teams.forEach((team) => {
+      teamStats[team.id] = {
+        id: team.id,
+        name: team.name,
+        mp: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        gf: 0,
+        ga: 0,
+        gd: 0,
+        pts: 0,
+        away_goals: 0,
+        headToHead: {},
+      };
+    });
+
+    const getPoints = (scoreA, scoreB) => {
+      if (scoreA > scoreB) return settings.points_win;
+      if (scoreA < scoreB) return settings.points_loss;
+      return settings.points_draw;
+    };
+
+    matches.forEach((match) => {
+      const [score1, score2] = match.score.split("-").map(Number);
+      const team1Stats = teamStats[match.team1_id];
+      const team2Stats = teamStats[match.team2_id];
+
+      if (!team1Stats || !team2Stats) {
+        return;
+      }
+
+      team1Stats.mp++;
+      team2Stats.mp++;
+
+      team1Stats.gf += score1;
+      team1Stats.ga += score2;
+      team2Stats.gf += score2;
+      team2Stats.ga += score1;
+      team2Stats.away_goals += score2;
+
+      if (score1 > score2) {
+        team1Stats.wins++;
+        team2Stats.losses++;
+      } else if (score2 > score1) {
+        team2Stats.wins++;
+        team1Stats.losses++;
+      } else {
+        team1Stats.draws++;
+        team2Stats.draws++;
+      }
+
+      const team1Points = getPoints(score1, score2);
+      const team2Points = getPoints(score2, score1);
+      team1Stats.pts += team1Points;
+      team2Stats.pts += team2Points;
+
+      const team1Head = team1Stats.headToHead[match.team2_id] || {
+        points: 0,
+        goalDiff: 0,
+        goalsFor: 0,
+      };
+      team1Head.points += team1Points;
+      team1Head.goalDiff += score1 - score2;
+      team1Head.goalsFor += score1;
+      team1Stats.headToHead[match.team2_id] = team1Head;
+
+      const team2Head = team2Stats.headToHead[match.team1_id] || {
+        points: 0,
+        goalDiff: 0,
+        goalsFor: 0,
+      };
+      team2Head.points += team2Points;
+      team2Head.goalDiff += score2 - score1;
+      team2Head.goalsFor += score2;
+      team2Stats.headToHead[match.team1_id] = team2Head;
+    });
+
+    const leaderboard = Object.values(teamStats).map((stats) => {
+      stats.gd = stats.gf - stats.ga;
+      return stats;
+    });
+
+    const compareDesc = (aVal, bVal) => {
+      if (aVal > bVal) return -1;
+      if (aVal < bVal) return 1;
+      return 0;
+    };
+
+    const compareAsc = (aVal, bVal) => -compareDesc(aVal, bVal);
+
+    const comparator = (a, b) => {
+      for (const key of settings.ranking_priority || []) {
+        let diff = 0;
+        switch (key) {
+          case "points":
+            diff = compareDesc(a.pts, b.pts);
+            break;
+          case "goal_difference":
+            diff = compareDesc(a.gd, b.gd);
+            break;
+          case "goals_for":
+            diff = compareDesc(a.gf, b.gf);
+            break;
+          case "goals_against":
+            diff = compareAsc(a.ga, b.ga);
+            break;
+          case "away_goals":
+            diff = compareDesc(a.away_goals || 0, b.away_goals || 0);
+            break;
+          case "head_to_head": {
+            const aRecord = a.headToHead?.[b.id] || {
+              points: 0,
+              goalDiff: 0,
+              goalsFor: 0,
             };
-        });
-
-        matches.forEach(match => {
-            const [score1, score2] = match.score.split('-').map(Number);
-            const team1Stats = teamStats[match.team1_id];
-            const team2Stats = teamStats[match.team2_id];
-
-            if (team1Stats) {
-                team1Stats.mp++;
-                team1Stats.gf += score1;
-                team1Stats.ga += score2;
+            const bRecord = b.headToHead?.[a.id] || {
+              points: 0,
+              goalDiff: 0,
+              goalsFor: 0,
+            };
+            diff = compareDesc(aRecord.points, bRecord.points);
+            if (diff === 0) {
+              diff = compareDesc(aRecord.goalDiff, bRecord.goalDiff);
             }
-            if (team2Stats) {
-                team2Stats.mp++;
-                team2Stats.gf += score2;
-                team2Stats.ga += score1;
+            if (diff === 0) {
+              diff = compareDesc(aRecord.goalsFor, bRecord.goalsFor);
             }
+            break;
+          }
+          default:
+            diff = 0;
+        }
+        if (diff !== 0) {
+          return diff;
+        }
+      }
+      if (a.pts !== b.pts) {
+        return compareDesc(a.pts, b.pts);
+      }
+      if (a.gd !== b.gd) {
+        return compareDesc(a.gd, b.gd);
+      }
+      if (a.gf !== b.gf) {
+        return compareDesc(a.gf, b.gf);
+      }
+      return a.name.localeCompare(b.name);
+    };
 
-            if (score1 > score2) {
-                if (team1Stats) team1Stats.wins++;
-                if (team2Stats) team2Stats.losses++;
-            } else if (score2 > score1) {
-                if (team2Stats) team2Stats.wins++;
-                if (team1Stats) team1Stats.losses++;
-            } else {
-                if (team1Stats) team1Stats.draws++;
-                if (team2Stats) team2Stats.draws++;
-            }
-        });
+    leaderboard.sort(comparator);
 
-        const leaderboard = Object.values(teamStats).map(stats => {
-            stats.gd = stats.gf - stats.ga;
-            stats.pts = (stats.wins * 3) + (stats.draws * 1);
-            return stats;
-        });
-
-        leaderboard.sort((a, b) => {
-            if (b.pts !== a.pts) return b.pts - a.pts;
-            if (b.gd !== a.gd) return b.gd - a.gd;
-            if (b.gf !== a.gf) return b.gf - a.gf;
-            return a.name.localeCompare(b.name);
-        });
-
-        res.json(leaderboard);
-
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to generate leaderboard.' });
-    }
+    res.json(leaderboard);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to generate leaderboard." });
+  }
 });
 
 // GET /api/leaderboard/top-scorers - Get top scorer leaderboard
-router.get('/top-scorers', (req, res) => {
-    const sql = `
+router.get("/top-scorers", (req, res) => {
+  const sql = `
         SELECT
             p.id,
             p.name as player_name,
@@ -100,14 +197,13 @@ router.get('/top-scorers', (req, res) => {
         ORDER BY goals DESC
     `;
 
-    db.all(sql, [], (err, rows) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-            return;
-        }
-        res.json(rows);
-    });
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    res.json(rows);
+  });
 });
-
 
 module.exports = router;

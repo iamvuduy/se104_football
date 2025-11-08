@@ -42,9 +42,9 @@ const TeamList = () => {
 
   const sortedTeams = useMemo(() => {
     return [...teams].sort((a, b) => {
-      const nameA = (a.name || "").toLowerCase();
-      const nameB = (b.name || "").toLowerCase();
-      return nameA.localeCompare(nameB);
+      const codeA = (a.team_code || "").toUpperCase();
+      const codeB = (b.team_code || "").toUpperCase();
+      return codeA.localeCompare(codeB, "vi", { numeric: true });
     });
   }, [teams]);
 
@@ -155,6 +155,7 @@ const TeamList = () => {
           <ul className="team-list">
             {sortedTeams.map((team) => {
               const displayName = team.name?.trim() || "Đội chưa đặt tên";
+              const displayCode = team.team_code?.trim() || "CHUA_CO_MA";
               const stadium = team.home_stadium?.trim() || "Đang cập nhật";
               const playerCount = team.player_count || 0;
               const avatarLetter = displayName.charAt(0).toUpperCase();
@@ -166,7 +167,10 @@ const TeamList = () => {
                   </div>
                   <div className="team-list-content">
                     <div className="team-list-heading">
-                      <h3>{displayName}</h3>
+                      <h3>
+                        <span className="team-list-code">{displayCode}</span>{" "}
+                        {displayName}
+                      </h3>
                       <span className="team-list-pill">
                         {playerCount} cầu thủ
                       </span>
