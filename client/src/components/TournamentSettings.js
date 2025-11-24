@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import "./TournamentSettings.css";
+import "./AdminPanels.css";
 
 const priorityLabels = {
   points: "Điểm số",
@@ -36,8 +36,8 @@ const fieldLabels = {
 };
 
 const TournamentSettings = () => {
-  const { token, user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const { token, canAccessFeature } = useAuth();
+  const canManageSettings = canAccessFeature("manage_settings");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -55,7 +55,7 @@ const TournamentSettings = () => {
   }, [token]);
 
   useEffect(() => {
-    if (!token) {
+    if (!token || !canManageSettings) {
       setForm(null);
       setLoading(false);
       return;
@@ -98,7 +98,7 @@ const TournamentSettings = () => {
       isMounted = false;
       controller.abort();
     };
-  }, [headers, token, refreshKey]);
+  }, [headers, token, refreshKey, canManageSettings]);
 
   const updateField = (key, value) => {
     setForm((prev) => ({
@@ -324,18 +324,20 @@ const TournamentSettings = () => {
     ];
   }, [form]);
 
-  if (!isAdmin) {
+  if (!canManageSettings) {
     return (
-      <div className="ts-shell">
-        <div className="ts-container">
-          <header className="ts-hero">
+      <div className="admin-shell">
+        <div className="admin-wrapper">
+          <header className="admin-hero">
             <div>
-              <span className="ts-hero-badge">Quyền hạn hạn chế</span>
-              <h1>Cài đặt Giải đấu</h1>
-              <p>Bạn không có quyền truy cập chức năng này.</p>
+              <span className="admin-hero-badge">Quyền hạn hạn chế</span>
+              <h1>Cài đặt giải đấu</h1>
+              <p>
+                Chỉ quản trị viên giải đấu mới được phép tùy chỉnh thông số.
+              </p>
             </div>
           </header>
-          <div className="ts-alert" role="alert">
+          <div className="admin-alert" role="alert">
             Bạn không có quyền truy cập chức năng này.
           </div>
         </div>
@@ -345,16 +347,16 @@ const TournamentSettings = () => {
 
   if (loading) {
     return (
-      <div className="ts-shell">
-        <div className="ts-container">
-          <header className="ts-hero">
+      <div className="admin-shell">
+        <div className="admin-wrapper">
+          <header className="admin-hero">
             <div>
-              <span className="ts-hero-badge">Đang đồng bộ</span>
-              <h1>Cài đặt Giải đấu</h1>
-              <p>Hệ thống đang lấy dữ liệu mới nhất, vui lòng chờ giây lát.</p>
+              <span className="admin-hero-badge">Đang đồng bộ</span>
+              <h1>Cài đặt giải đấu</h1>
+              <p>Hệ thống đang tải cấu hình mới nhất, vui lòng chờ giây lát.</p>
             </div>
           </header>
-          <div className="ts-loading">Đang tải cấu hình...</div>
+          <div className="admin-loading">Đang tải cấu hình...</div>
         </div>
       </div>
     );
@@ -362,18 +364,18 @@ const TournamentSettings = () => {
 
   if (!form) {
     return (
-      <div className="ts-shell">
-        <div className="ts-container">
-          <header className="ts-hero">
+      <div className="admin-shell">
+        <div className="admin-wrapper">
+          <header className="admin-hero">
             <div>
-              <span className="ts-hero-badge">Không có dữ liệu</span>
-              <h1>Cài đặt Giải đấu</h1>
-              <p>Không thể tải dữ liệu quy định. Vui lòng thử lại.</p>
+              <span className="admin-hero-badge">Không có dữ liệu</span>
+              <h1>Cài đặt giải đấu</h1>
+              <p>Không thể tải dữ liệu cấu hình. Vui lòng thử lại sau.</p>
             </div>
-            <div className="ts-hero-actions">
+            <div className="admin-hero-actions">
               <button
                 type="button"
-                className="ts-btn is-ghost"
+                className="admin-btn is-ghost"
                 onClick={handleReload}
               >
                 Thử tải lại
@@ -381,7 +383,7 @@ const TournamentSettings = () => {
             </div>
           </header>
           {error && (
-            <div className="ts-alert" onClick={() => setError(null)}>
+            <div className="admin-alert" onClick={() => setError(null)}>
               {error} (bấm để ẩn)
             </div>
           )}
@@ -391,21 +393,21 @@ const TournamentSettings = () => {
   }
 
   return (
-    <div className="ts-shell">
-      <div className="ts-container">
-        <header className="ts-hero">
+    <div className="admin-shell">
+      <div className="admin-wrapper">
+        <header className="admin-hero">
           <div>
-            <span className="ts-hero-badge">Trung tâm cấu hình</span>
-            <h1>Cài đặt Giải đấu</h1>
+            <span className="admin-hero-badge">Trung tâm cấu hình</span>
+            <h1>Cài đặt giải đấu</h1>
             <p>
-              Điều chỉnh các thông số cốt lõi của giải đấu. Những thay đổi sẽ áp
-              dụng cho các quy trình khác trong hệ thống.
+              Quản lý quy tắc giải đấu, giới hạn đội hình và mô hình tính điểm
+              cho toàn bộ hệ thống.
             </p>
           </div>
-          <div className="ts-hero-actions">
+          <div className="admin-hero-actions">
             <button
               type="button"
-              className="ts-btn is-ghost"
+              className="admin-btn is-ghost"
               onClick={handleReload}
               disabled={saving}
             >
@@ -415,81 +417,86 @@ const TournamentSettings = () => {
         </header>
 
         {summaryCards.length > 0 && (
-          <ul className="ts-summary" role="list">
+          <ul className="admin-summary" role="list">
             {summaryCards.map((item) => (
-              <li key={item.id} className="ts-summary-item">
-                <span className="ts-summary-label">{item.label}</span>
-                <strong className="ts-summary-value">{item.value}</strong>
-                <span className="ts-summary-hint">{item.hint}</span>
+              <li key={item.id} className="admin-summary-item">
+                <span className="admin-summary-label">{item.label}</span>
+                <strong className="admin-summary-value">{item.value}</strong>
+                <span className="admin-summary-hint">{item.hint}</span>
               </li>
             ))}
           </ul>
         )}
 
         {error && (
-          <div className="ts-alert" onClick={() => setError(null)}>
+          <div className="admin-alert" onClick={() => setError(null)}>
             {error} (bấm để ẩn)
           </div>
         )}
 
         {toast && (
-          <div className="ts-toast" onClick={() => setToast(null)}>
+          <div className="admin-toast" onClick={() => setToast(null)}>
             {toast}
           </div>
         )}
 
-        <section className="ts-section">
+        <section className="admin-card">
           <header>
-            <h2>Quy định về Cầu thủ & Đội bóng</h2>
+            <h2>Quy định cầu thủ & đội bóng</h2>
             <span>Điều chỉnh giới hạn đăng ký cầu thủ cho từng đội.</span>
           </header>
-          <div className="ts-grid">
-            <label className="ts-field">
-              <span>Tuổi tối thiểu</span>
+          <div className="admin-form-grid is-two-column">
+            <label className="admin-field">
+              <span className="admin-label">Tuổi tối thiểu</span>
               <input
                 type="number"
                 name="player_min_age"
                 min="0"
+                className="admin-input"
                 value={form.player_min_age}
                 onChange={handleNumberChange}
               />
             </label>
-            <label className="ts-field">
-              <span>Tuổi tối đa</span>
+            <label className="admin-field">
+              <span className="admin-label">Tuổi tối đa</span>
               <input
                 type="number"
                 name="player_max_age"
                 min="0"
+                className="admin-input"
                 value={form.player_max_age}
                 onChange={handleNumberChange}
               />
             </label>
-            <label className="ts-field">
-              <span>Số cầu thủ tối thiểu</span>
+            <label className="admin-field">
+              <span className="admin-label">Số cầu thủ tối thiểu</span>
               <input
                 type="number"
                 name="team_min_players"
                 min="0"
+                className="admin-input"
                 value={form.team_min_players}
                 onChange={handleNumberChange}
               />
             </label>
-            <label className="ts-field">
-              <span>Số cầu thủ tối đa</span>
+            <label className="admin-field">
+              <span className="admin-label">Số cầu thủ tối đa</span>
               <input
                 type="number"
                 name="team_max_players"
                 min="0"
+                className="admin-input"
                 value={form.team_max_players}
                 onChange={handleNumberChange}
               />
             </label>
-            <label className="ts-field">
-              <span>Số cầu thủ nước ngoài tối đa</span>
+            <label className="admin-field">
+              <span className="admin-label">Giới hạn cầu thủ nước ngoài</span>
               <input
                 type="number"
                 name="foreign_player_limit"
                 min="0"
+                className="admin-input"
                 value={form.foreign_player_limit}
                 onChange={handleNumberChange}
               />
@@ -497,88 +504,112 @@ const TournamentSettings = () => {
           </div>
         </section>
 
-        <section className="ts-section">
+        <section className="admin-card">
           <header>
-            <h2>Quy định về Bàn thắng</h2>
+            <h2>Quy định bàn thắng</h2>
             <span>Tùy chỉnh loại bàn thắng và giới hạn thời gian ghi bàn.</span>
           </header>
-          <div className="ts-goal-types">
-            <h3>Loại bàn thắng</h3>
-            <form className="ts-goal-add" onSubmit={handleAddGoalType}>
-              <input
-                type="text"
-                value={goalDraft}
-                placeholder="Nhập tên loại bàn thắng"
-                onChange={(event) => setGoalDraft(event.target.value)}
-              />
-              <button
-                type="submit"
-                className="ts-btn"
-                disabled={!goalDraft.trim()}
-              >
-                Thêm
-              </button>
-            </form>
-            <ul className="ts-chip-list">
-              {form.goal_types.map((type) => (
-                <li key={type} className="ts-chip">
-                  <span>{type}</span>
-                  <button
-                    type="button"
-                    className="ts-chip-remove"
-                    onClick={() => handleRemoveGoalType(type)}
-                    aria-label={`Xóa loại bàn thắng ${type}`}
-                  >
-                    ×
-                  </button>
-                </li>
-              ))}
-            </ul>
+          <div className="admin-scoreboard">
+            <div className="admin-scoreboard-title">
+              <span>Loại bàn thắng hiện có</span>
+              <strong className="admin-scoreboard-value">
+                {form.goal_types.length}
+              </strong>
+            </div>
+            <div className="admin-scoreboard-title">
+              <span>Giới hạn thời điểm</span>
+              <strong className="admin-scoreboard-value">
+                {form.goal_time_limit}&apos;
+              </strong>
+            </div>
           </div>
-          <label className="ts-field">
-            <span>Thời điểm ghi bàn tối đa (phút)</span>
+          <form className="admin-form-grid" onSubmit={handleAddGoalType}>
+            <div className="admin-field">
+              <label className="admin-label" htmlFor="goal-type-input">
+                Thêm loại bàn thắng
+              </label>
+              <div className="admin-inline">
+                <input
+                  id="goal-type-input"
+                  type="text"
+                  className="admin-input"
+                  value={goalDraft}
+                  placeholder="Nhập tên loại bàn thắng"
+                  onChange={(event) => setGoalDraft(event.target.value)}
+                />
+                <button
+                  type="submit"
+                  className="admin-btn is-primary"
+                  disabled={!goalDraft.trim()}
+                >
+                  Thêm
+                </button>
+              </div>
+            </div>
+          </form>
+          <ul className="ts-chip-list">
+            {form.goal_types.map((type) => (
+              <li key={type} className="ts-chip">
+                <span>{type}</span>
+                <button
+                  type="button"
+                  className="ts-chip-remove"
+                  onClick={() => handleRemoveGoalType(type)}
+                  aria-label={`Xóa loại bàn thắng ${type}`}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+          <label className="admin-field">
+            <span className="admin-label">Thời điểm ghi bàn tối đa (phút)</span>
             <input
               type="number"
               name="goal_time_limit"
               min="0"
+              className="admin-input"
               value={form.goal_time_limit}
               onChange={handleNumberChange}
             />
           </label>
         </section>
 
-        <section className="ts-section">
+        <section className="admin-card">
           <header>
-            <h2>Quy định về Xếp hạng</h2>
+            <h2>Quy định xếp hạng</h2>
             <span>Thiết lập điểm số và thứ tự ưu tiên khi xếp hạng.</span>
           </header>
-          <div className="ts-grid">
-            <label className="ts-field">
-              <span>Điểm khi thắng</span>
+          <div className="admin-form-grid is-two-column">
+            <label className="admin-field">
+              <span className="admin-label">Điểm khi thắng</span>
               <input
                 type="number"
                 name="points_win"
                 min="0"
+                className="admin-input"
                 value={form.points_win}
                 onChange={handleNumberChange}
               />
             </label>
-            <label className="ts-field">
-              <span>Điểm khi hòa</span>
+            <label className="admin-field">
+              <span className="admin-label">Điểm khi hòa</span>
               <input
                 type="number"
                 name="points_draw"
                 min="0"
+                className="admin-input"
                 value={form.points_draw}
                 onChange={handleNumberChange}
               />
             </label>
-            <label className="ts-field">
-              <span>Điểm khi thua</span>
+            <label className="admin-field">
+              <span className="admin-label">Điểm khi thua</span>
               <input
                 type="number"
                 name="points_loss"
                 min="0"
+                className="admin-input"
                 value={form.points_loss}
                 onChange={handleNumberChange}
               />
@@ -607,25 +638,23 @@ const TournamentSettings = () => {
           </div>
         </section>
 
-        <footer className="ts-actions">
-          <div className="ts-actions-group">
-            <button
-              type="button"
-              className="ts-btn is-danger"
-              onClick={handleReset}
-              disabled={saving}
-            >
-              Đặt lại mặc định
-            </button>
-            <button
-              type="button"
-              className="ts-btn is-primary"
-              onClick={handleSave}
-              disabled={saving}
-            >
-              {saving ? "Đang lưu..." : "Lưu thay đổi"}
-            </button>
-          </div>
+        <footer className="admin-actions">
+          <button
+            type="button"
+            className="admin-btn is-danger"
+            onClick={handleReset}
+            disabled={saving}
+          >
+            Đặt lại mặc định
+          </button>
+          <button
+            type="button"
+            className="admin-btn is-primary"
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? "Đang lưu..." : "Lưu thay đổi"}
+          </button>
         </footer>
       </div>
     </div>

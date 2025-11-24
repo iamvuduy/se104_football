@@ -1,4 +1,5 @@
 /* Login & Auth Pages - Modern Design */
+
 .auth-container {
   min-height: 100vh;
   display: flex;
@@ -29,6 +30,29 @@
   overflow: hidden;
 }
 
+.auth-branding::before {
+  content: "";
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.1) 0%,
+    transparent 70%
+  );
+  animation: pulse 15s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-30%, -30%) scale(1.1);
+  }
+}
+
 .auth-form-container {
   padding: 3rem;
   display: flex;
@@ -56,6 +80,7 @@
   margin-bottom: 2rem;
 }
 
+/* Input Groups */
 .input-group {
   position: relative;
   margin-bottom: 1.5rem;
@@ -63,7 +88,7 @@
 
 .input-group input {
   width: 100%;
-  padding: 1rem;
+  padding: 1rem 1rem;
   border: 2px solid #e1e8ed;
   border-radius: 10px;
   font-size: 1rem;
@@ -78,6 +103,16 @@
   box-shadow: 0 0 0 4px rgba(74, 144, 226, 0.1);
 }
 
+.input-group input:focus + label,
+.input-group input:not(:placeholder-shown) + label {
+  top: -10px;
+  left: 12px;
+  font-size: 0.75rem;
+  background: white;
+  padding: 0 0.5rem;
+  color: #4a90e2;
+}
+
 .input-group label {
   position: absolute;
   top: 50%;
@@ -88,16 +123,6 @@
   transition: all 0.3s ease;
   pointer-events: none;
   font-weight: 500;
-}
-
-.input-group input:focus + label,
-.input-group input:not(:placeholder-shown) + label {
-  top: -10px;
-  left: 12px;
-  font-size: 0.75rem;
-  background: white;
-  padding: 0 0.5rem;
-  color: #4a90e2;
 }
 
 .input-group .password-toggle {
@@ -113,6 +138,11 @@
   pointer-events: all;
 }
 
+.input-group .password-toggle:hover {
+  color: #357abd;
+}
+
+/* Auth Button */
 .auth-button {
   width: 100%;
   padding: 1rem;
@@ -133,6 +163,11 @@
   box-shadow: 0 6px 20px rgba(74, 144, 226, 0.4);
 }
 
+.auth-button:active {
+  transform: translateY(0);
+}
+
+/* Error Message */
 .error-message {
   background: #fef5f5;
   color: #e74c3c;
@@ -143,6 +178,7 @@
   border-left: 4px solid #e74c3c;
 }
 
+/* Switch Form Text */
 .switch-form-text {
   text-align: center;
   margin-top: 1.5rem;
@@ -154,13 +190,39 @@
   color: #4a90e2;
   text-decoration: none;
   font-weight: 600;
+  transition: color 0.3s ease;
 }
 
+.switch-form-text a:hover {
+  color: #357abd;
+  text-decoration: underline;
+}
+
+/* Responsive */
 @media (max-width: 991px) {
   .auth-split-layout {
     grid-template-columns: 1fr;
   }
+
   .auth-branding {
     display: none;
+  }
+}
+
+@media (max-width: 575px) {
+  .auth-container {
+    padding: 1rem;
+  }
+
+  .auth-form-container {
+    padding: 2rem 1.5rem;
+  }
+
+  .auth-branding-content h1 {
+    font-size: 1.5rem;
+  }
+
+  .auth-form-card h2 {
+    font-size: 1.5rem;
   }
 }

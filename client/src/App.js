@@ -16,7 +16,6 @@ import ScheduleManagement from "./components/ScheduleManagement";
 import RecordMatchResult from "./components/RecordMatchResult";
 import TeamLeaderboard from "./components/TeamLeaderboard";
 import TopScorerLeaderboard from "./components/TopScorerLeaderboard";
-import GroupManagement from "./components/GroupManagement"; // Import GroupManagement
 import MatchResultList from "./components/MatchResultList"; // Import MatchResultList
 import PlayerLookup from "./components/PlayerLookup";
 import TournamentSettings from "./components/TournamentSettings";
@@ -41,11 +40,6 @@ function App() {
               {/* Add this route */}
               <Route path="/admin/users" element={<UserManagement />} />
               <Route path="/admin/schedules" element={<ScheduleManagement />} />
-              <Route
-                path="/admin/group-management"
-                element={<GroupManagement />}
-              />{" "}
-              {/* Add this route */}
               <Route path="/record-result" element={<RecordMatchResult />} />
               <Route path="/match-results" element={<MatchResultList />} />{" "}
               {/* Add this route */}

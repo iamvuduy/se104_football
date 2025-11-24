@@ -1,197 +1,188 @@
+/* Team Leaderboard - Modern Table Design */
 .team-leaderboard-shell {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  min-height: calc(100vh - 140px);
-  padding: 3rem 1.25rem 2.5rem;
-  background: none;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+  min-height: 100vh;
 }
 
 .team-leaderboard-card {
-  position: relative;
-  width: 100%;
-  max-width: 500px;
-  border-radius: 18px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   overflow: hidden;
-  box-shadow: 0 24px 48px rgba(5, 11, 35, 0.45);
-  background: linear-gradient(
-    170deg,
-    rgba(9, 24, 66, 0.94),
-    rgba(13, 32, 82, 0.97)
-  );
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  color: #f8fbff;
-  backdrop-filter: blur(4px);
 }
 
 .team-leaderboard-header {
-  background: linear-gradient(100deg, #d8ff38 0%, #cfff3b 48%, #b7ff3a 100%);
-  color: #07163c;
-  padding: 1.4rem 1.9rem 1.15rem;
-  text-align: left;
+  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+  color: white;
+  padding: 2.5rem 2rem;
+  text-align: center;
 }
 
 .team-leaderboard-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.78rem;
-  font-weight: 700;
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 1px;
+  margin-bottom: 1rem;
 }
 
 .team-leaderboard-header h1 {
-  margin: 0.7rem 0 0.3rem;
-  font-size: 1.85rem;
-  letter-spacing: 0.02em;
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0.5rem 0;
 }
 
 .team-leaderboard-header p {
+  opacity: 0.9;
   margin: 0;
-  font-size: 0.85rem;
-  opacity: 0.7;
+}
+
+.team-leaderboard-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid #f0f3f7;
+  flex-wrap: wrap;
+}
+
+.team-leaderboard-controls label {
+  font-weight: 600;
+  color: #1a2332;
+}
+
+.team-leaderboard-controls input[type="date"] {
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #dce3ec;
+  font-size: 0.95rem;
+}
+
+.team-leaderboard-asof {
+  margin-left: auto;
+  color: #4a90e2;
+  font-weight: 600;
 }
 
 .team-leaderboard-table {
   width: 100%;
   border-collapse: collapse;
-  background: transparent;
 }
 
-.team-leaderboard-table thead tr {
-  background: rgba(6, 21, 55, 0.85);
+.team-leaderboard-table thead {
+  background: #f8f9fb;
 }
 
 .team-leaderboard-table th {
-  padding: 0.6rem 0.85rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #9fb7ff;
+  padding: 1rem;
   text-align: left;
-}
-
-.team-leaderboard-table th:nth-child(1) {
-  width: 70px;
-}
-
-.team-leaderboard-table th:nth-child(n + 3) {
-  text-align: right;
-}
-
-.team-leaderboard-row {
-  transition: transform 0.2s ease, background 0.2s ease;
-  background: rgba(9, 29, 76, 0.55);
-}
-
-.team-leaderboard-row:nth-child(even) {
-  background: rgba(9, 26, 68, 0.42);
-}
-
-.team-leaderboard-row:hover {
-  transform: translateX(6px);
-  background: rgba(16, 54, 133, 0.6);
-}
-
-.team-leaderboard-row--leader {
-  background: linear-gradient(
-    110deg,
-    rgba(217, 255, 56, 0.25),
-    rgba(12, 36, 107, 0.85)
-  );
-}
-
-.team-leaderboard-row--top5 {
-  background: rgba(18, 58, 142, 0.6);
+  font-weight: 600;
+  color: #1a2332;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.5px;
 }
 
 .team-leaderboard-table td {
-  padding: 0.65rem 0.85rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  vertical-align: middle;
+  padding: 1.25rem 1rem;
+  border-bottom: 1px solid #f0f3f7;
 }
 
-.team-leaderboard-table td:nth-child(n + 3) {
-  text-align: right;
-  font-weight: 700;
-  font-size: 0.92rem;
+.team-leaderboard-row:hover {
+  background: #f8f9fb;
 }
 
-.team-leaderboard-name-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+.team-leaderboard-row--leader {
+  background: #fff8e1;
 }
 
-.team-leaderboard-name {
-  font-size: 0.95rem;
-  font-weight: 600;
+.team-leaderboard-row--leader:hover {
+  background: #fff3cd;
+}
+
+.team-leaderboard-row--top5 {
+  background: #e8f4fd;
+}
+
+.team-leaderboard-row--top5:hover {
+  background: #d6eafd;
 }
 
 .team-leaderboard-rank {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
+  font-size: 1.25rem;
   font-weight: 700;
-  color: #ffffff;
+  color: #4a90e2;
 }
 
-.team-leaderboard-row--leader .team-leaderboard-rank {
-  background: linear-gradient(135deg, #d4ff3e, #b7ff3a);
-  color: #061542;
+.team-leaderboard-name {
+  font-weight: 600;
+  color: #1a2332;
+  font-size: 1rem;
 }
 
 .team-leaderboard-points {
-  color: #ffffff;
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: #27ae60;
 }
 
 .team-leaderboard-diff {
-  color: #8bff92;
+  font-weight: 600;
 }
 
 .team-leaderboard-footer {
-  padding: 1.1rem 2.25rem;
-  background: rgba(3, 14, 42, 0.9);
-  font-size: 0.85rem;
-  color: #7f9dff;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  padding: 1.5rem 2rem;
+  background: #f8f9fb;
+  text-align: center;
+  color: #7f8c9a;
+  font-size: 0.9rem;
 }
 
 .team-leaderboard-loading,
 .team-leaderboard-error {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 240px;
-  font-weight: 600;
-  color: #123c8d;
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #7f8c9a;
 }
 
-@media (max-width: 600px) {
+.team-leaderboard-error {
+  color: #e74c3c;
+}
+
+@media (max-width: 767px) {
+  .team-leaderboard-shell {
+    padding: 1rem 0.5rem;
+  }
+
   .team-leaderboard-header {
-    padding: 1.4rem 1.5rem 1.15rem;
+    padding: 2rem 1.5rem;
   }
 
   .team-leaderboard-header h1 {
-    font-size: 1.65rem;
+    font-size: 1.75rem;
+  }
+
+  .team-leaderboard-controls {
+    padding: 1rem 1.5rem;
+  }
+
+  .team-leaderboard-asof {
+    margin-left: 0;
+  }
+
+  .team-leaderboard-table {
+    font-size: 0.9rem;
   }
 
   .team-leaderboard-table th,
   .team-leaderboard-table td {
-    padding: 0.85rem 1rem;
-  }
-
-  .team-leaderboard-rank {
-    width: 32px;
-    height: 32px;
-    font-size: 0.9rem;
+    padding: 0.875rem 0.5rem;
   }
 }

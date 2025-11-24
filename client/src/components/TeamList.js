@@ -10,8 +10,9 @@ const TeamList = () => {
   const [error, setError] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [status, setStatus] = useState(null);
-  const { token, user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const { token, canAccessFeature } = useAuth();
+  const canManageTeams = canAccessFeature("manage_teams");
+  const canRegisterTeams = canAccessFeature("register_team");
 
   const fetchTeams = useCallback(async () => {
     if (!token) {
@@ -49,7 +50,7 @@ const TeamList = () => {
   }, [teams]);
 
   const handleDeleteTeam = async (team) => {
-    if (!isAdmin || !team?.id) return;
+    if (!canManageTeams || !team?.id) return;
 
     const confirmed = window.confirm(
       `Bạn có chắc chắn muốn xoá đội "${team.name || "Không tên"}"?`
@@ -118,13 +119,15 @@ const TeamList = () => {
           >
             {loading ? "Đang tải..." : "Tải lại"}
           </button>
-          <Link to="/register-team" className="team-action secondary">
-            Thêm đội mới
-          </Link>
+          {canRegisterTeams && (
+            <Link to="/register-team" className="team-action secondary">
+              Thêm đội mới
+            </Link>
+          )}
         </div>
       </header>
 
-      {!isAdmin && (
+      {!canManageTeams && canRegisterTeams && (
         <p className="team-help-text">
           Bạn muốn đăng ký đội bóng mới? Chọn "Thêm đội mới" để gửi thông tin
           cho ban tổ chức.
@@ -184,7 +187,7 @@ const TeamList = () => {
                     >
                       Xem chi tiết
                     </Link>
-                    {isAdmin && (
+                    {canManageTeams && (
                       <>
                         <Link
                           to={`/teams/${team.id}/edit`}

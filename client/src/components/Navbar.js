@@ -4,24 +4,104 @@ import { useAuth } from "../context/AuthContext";
 import "./Navbar.css";
 
 const Navbar = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, canAccessFeature } = useAuth();
   const navigate = useNavigate();
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState(null);
   const dropdownRef = useRef(null);
+
+  const navItems = [
+    {
+      key: "register-team",
+      label: "Đăng ký đội",
+      to: "/register-team",
+      feature: "register_team",
+    },
+    {
+      key: "teams",
+      label: "Danh sách đội",
+      to: "/teams",
+      feature: "view_teams",
+    },
+    {
+      key: "player-lookup",
+      label: "Tra cứu cầu thủ",
+      to: "/player-lookup",
+      feature: "view_players",
+    },
+    {
+      key: "leaderboards",
+      type: "dropdown",
+      label: "BXH",
+      feature: "view_leaderboards",
+      children: [
+        {
+          key: "team-leaderboard",
+          label: "BXH Đội",
+          to: "/team-leaderboard",
+          feature: "view_leaderboards",
+        },
+        {
+          key: "top-scorer",
+          label: "Vua phá lưới",
+          to: "/top-scorer-leaderboard",
+          feature: "view_leaderboards",
+        },
+      ],
+    },
+    {
+      key: "users",
+      label: "Quản lý người dùng",
+      to: "/admin/users",
+      feature: "manage_users",
+    },
+    {
+      key: "schedules",
+      label: "Lịch thi đấu",
+      to: "/admin/schedules",
+      feature: "manage_schedules",
+    },
+    {
+      key: "settings",
+      label: "Cài đặt giải đấu",
+      to: "/admin/tournament-settings",
+      feature: "manage_settings",
+    },
+    {
+      key: "record-result",
+      label: "Ghi kết quả",
+      to: "/record-result",
+      feature: "record_match_results",
+    },
+  ];
+
+  const visibleNavItems = navItems
+    .map((item) => {
+      if (item.type === "dropdown") {
+        const visibleChildren = (item.children || []).filter((child) =>
+          canAccessFeature(child.feature)
+        );
+        if (!canAccessFeature(item.feature) || visibleChildren.length === 0) {
+          return null;
+        }
+        return { ...item, children: visibleChildren };
+      }
+      return canAccessFeature(item.feature) ? item : null;
+    })
+    .filter(Boolean);
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
-  const toggleDropdown = () => {
-    setIsDropdownOpen(!isDropdownOpen);
+  const toggleDropdown = (key) => {
+    setOpenDropdown((prev) => (prev === key ? null : key));
   };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsDropdownOpen(false);
+        setOpenDropdown(null);
       }
     };
 
@@ -40,81 +120,46 @@ const Navbar = () => {
       </div>
       <div className="navbar-center">
         <ul className="navbar-nav">
-          <li className="nav-item">
-            <NavLink className="nav-link" to="/register-team">
-              Đăng ký đội
-            </NavLink>
-          </li>
-          <li className="nav-item">
-            <NavLink className="nav-link" to="/teams">
-              Danh sách đội
-            </NavLink>
-          </li>
-          <li className="nav-item">
-            <NavLink className="nav-link" to="/player-lookup">
-              Tra cứu cầu thủ
-            </NavLink>
-          </li>
-          <li className="nav-item dropdown" ref={dropdownRef}>
-            <span
-              className="nav-link"
-              onClick={toggleDropdown}
-              style={{ cursor: "pointer" }}
-            >
-              BXH
-            </span>
-            <div className={`dropdown-content ${isDropdownOpen ? "show" : ""}`}>
-              <NavLink
-                className="nav-link"
-                to="/team-leaderboard"
-                onClick={() => setIsDropdownOpen(false)}
-              >
-                BXH Đội
-              </NavLink>
-              <NavLink
-                className="nav-link"
-                to="/top-scorer-leaderboard"
-                onClick={() => setIsDropdownOpen(false)}
-              >
-                Vua phá lưới
-              </NavLink>
-            </div>
-          </li>
-          {user && user.role === "admin" && (
-            <li className="nav-item">
-              <NavLink className="nav-link" to="/admin/users">
-                Quản lý người dùng
-              </NavLink>
-            </li>
-          )}
-          {user && user.role === "admin" && (
-            <li className="nav-item">
-              <NavLink className="nav-link" to="/admin/schedules">
-                Lịch thi đấu
-              </NavLink>
-            </li>
-          )}
-          {user && user.role === "admin" && (
-            <li className="nav-item">
-              <NavLink className="nav-link" to="/admin/group-management">
-                Bảng đấu
-              </NavLink>
-            </li>
-          )}
-          {user && user.role === "admin" && (
-            <li className="nav-item">
-              <NavLink className="nav-link" to="/admin/tournament-settings">
-                Cài đặt giải đấu
-              </NavLink>
-            </li>
-          )}
-          {user && user.role === "admin" && (
-            <li className="nav-item">
-              <NavLink className="nav-link" to="/record-result">
-                Ghi kết quả
-              </NavLink>
-            </li>
-          )}
+          {visibleNavItems.map((item) => {
+            if (item.type === "dropdown") {
+              const isOpen = openDropdown === item.key;
+              return (
+                <li
+                  key={item.key}
+                  className="nav-item dropdown"
+                  ref={dropdownRef}
+                >
+                  <span
+                    className="nav-link"
+                    onClick={() => toggleDropdown(item.key)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    {item.label}
+                  </span>
+                  <div className={`dropdown-content ${isOpen ? "show" : ""}`}>
+                    {item.children?.map((child) => (
+                      <NavLink
+                        key={child.key}
+                        className="nav-link"
+                        to={child.to}
+                        onClick={() => setOpenDropdown(null)}
+                      >
+                        {child.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                </li>
+              );
+            }
+
+            return (
+              <li key={item.key} className="nav-item">
+                <NavLink className="nav-link" to={item.to}>
+                  {item.label}
+                </NavLink>
+              </li>
+            );
+          })}
         </ul>
       </div>
       <div className="navbar-right">

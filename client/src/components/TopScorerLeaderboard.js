@@ -9,6 +9,13 @@ const TopScorerLeaderboard = () => {
   const { token } = useAuth();
 
   useEffect(() => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+
     const fetchTopScorers = async () => {
       try {
         const response = await fetch("/api/leaderboard/top-scorers", {
@@ -16,103 +23,143 @@ const TopScorerLeaderboard = () => {
             Authorization: `Bearer ${token}`,
           },
         });
+
         if (!response.ok) {
-          throw new Error("Failed to fetch top scorers");
+          throw new Error("Không thể tải danh sách vua phá lưới");
         }
+
         const data = await response.json();
-        setPlayers(data);
+        if (isMounted) {
+          setPlayers(Array.isArray(data) ? data : []);
+        }
       } catch (err) {
-        setError(err.message);
+        if (isMounted) {
+          setError(err.message);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
-    if (token) {
-      fetchTopScorers();
-    }
+    fetchTopScorers();
+
+    return () => {
+      isMounted = false;
+    };
   }, [token]);
 
-  const renderRowClass = (index) => {
-    if (index === 0) {
-      return "leaderboard-row rank-1";
-    }
-    if (index === 1) {
-      return "leaderboard-row rank-2";
-    }
-    if (index === 2) {
-      return "leaderboard-row rank-3";
-    }
-    return "leaderboard-row";
-  };
+  const hasTrailingPlayers = players.length > 3;
 
   if (loading) {
     return (
-      <div className="top-scorer-leaderboard loading-state">
-        <div className="loading-spinner" aria-hidden="true" />
-        <p>Đang tải dữ liệu vua phá lưới...</p>
+      <div
+        className="top-scorer-page is-loading"
+        role="status"
+        aria-live="polite"
+      >
+        <div className="ts-spinner" />
+        <p>Đang tải bảng xếp hạng vua phá lưới...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="top-scorer-leaderboard error-state">
-        <p>Không thể tải dữ liệu: {error}</p>
+      <div className="top-scorer-page is-error" role="alert">
+        <h1>Vua Phá Lưới</h1>
+        <p>{error}</p>
       </div>
     );
   }
 
   if (!players.length) {
     return (
-      <div className="top-scorer-leaderboard empty-state">
+      <div className="top-scorer-page is-empty">
         <h1>Vua Phá Lưới</h1>
-        <p>Chưa có cầu thủ nào ghi bàn để hiển thị.</p>
+        <p>Chưa có dữ liệu ghi bàn. Hãy quay lại sau khi có trận đấu.</p>
       </div>
     );
   }
 
   return (
-    <div className="top-scorer-leaderboard">
-      <header className="leaderboard-hero">
-        <h1>Vua Phá Lưới</h1>
-      </header>
+    <div className="top-scorer-page">
+      <div className="ts-container">
+        <header className="ts-hero">
+          <div>
+            <span className="ts-hero-badge">Thống kê mùa giải</span>
+            <h1>Vua phá lưới</h1>
+            <p>
+              Theo dõi những chân sút xuất sắc nhất cùng số bàn thắng cập nhật
+              theo thời gian thực.
+            </p>
+          </div>
+          <div className="ts-meta">
+            <article>
+              <span>Tổng cầu thủ</span>
+              <strong>{players.length}</strong>
+            </article>
+            <article>
+              <span>Bàn thắng cao nhất</span>
+              <strong>{players[0]?.goals ?? 0}</strong>
+            </article>
+          </div>
+        </header>
 
-      <section
-        className="leaderboard-table-section"
-        aria-label="Bảng xếp hạng chi tiết"
-      >
-        <div className="table-header">
-          <h3>Toàn bộ danh sách</h3>
-        </div>
-        <div className="table-wrapper">
-          <table className="leaderboard-table">
-            <thead>
-              <tr>
-                <th>STT</th>
-                <th>Cầu thủ</th>
-                <th>Đội</th>
-                <th>Loại cầu thủ</th>
-                <th>Bàn thắng</th>
-              </tr>
-            </thead>
-            <tbody>
-              {players.map((player, index) => (
-                <tr
-                  key={player.id || `${player.player_name}-${index}`}
-                  className={renderRowClass(index)}
-                >
-                  <td>#{index + 1}</td>
-                  <td>{player.player_name}</td>
-                  <td>{player.team_name}</td>
-                  <td>{player.player_type}</td>
-                  <td>{player.goals}</td>
+        <section className="ts-table-section" aria-label="Danh sách đầy đủ">
+          <header className="ts-table-header">
+            <div>
+              <h3>Danh sách đầy đủ</h3>
+              <p>
+                Các vị trí còn lại được sắp xếp theo tổng số bàn thắng ghi được.
+              </p>
+            </div>
+          </header>
+
+          <div className="ts-table-wrapper">
+            <table className="ts-table">
+              <thead>
+                <tr>
+                  <th>Hạng</th>
+                  <th>Cầu thủ</th>
+                  <th>Đội bóng</th>
+                  <th>Loại cầu thủ</th>
+                  <th>Số bàn</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+              </thead>
+              <tbody>
+                {players.map((player, index) => (
+                  <tr
+                    key={player.id || `${player.player_name}-${index}`}
+                    className={index < 3 ? "ts-row-highlight" : ""}
+                  >
+                    <td>#{index + 1}</td>
+                    <td>
+                      <span className="ts-name">{player.player_name}</span>
+                    </td>
+                    <td>{player.team_name}</td>
+                    <td>
+                      <span className="ts-type">{player.player_type}</span>
+                    </td>
+                    <td>
+                      <span className="ts-goal-count">{player.goals}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {!hasTrailingPlayers ? null : (
+            <footer className="ts-table-footnote">
+              <p>
+                * Bảng xếp hạng cập nhật khi có thay đổi ở kết quả các trận đấu.
+              </p>
+            </footer>
+          )}
+        </section>
+      </div>
     </div>
   );
 };

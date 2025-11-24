@@ -11,7 +11,8 @@ import {
 } from "react-icons/fa";
 
 const ScheduleManagement = () => {
-  const { token } = useAuth();
+  const { token, canAccessFeature } = useAuth();
+  const canManageSchedules = canAccessFeature("manage_schedules");
   const [schedules, setSchedules] = useState([]);
   const [teams, setTeams] = useState([]);
   const [form, setForm] = useState({
@@ -30,13 +31,13 @@ const ScheduleManagement = () => {
   const [toast, setToast] = useState("");
 
   const axiosConfig = useMemo(() => {
-    if (!token) {
+    if (!token || !canManageSchedules) {
       return null;
     }
     return {
       headers: { Authorization: `Bearer ${token}` },
     };
-  }, [token]);
+  }, [token, canManageSchedules]);
 
   const loadData = useCallback(async () => {
     if (!axiosConfig) {
@@ -88,10 +89,12 @@ const ScheduleManagement = () => {
   }, [axiosConfig]);
 
   useEffect(() => {
-    if (axiosConfig) {
-      loadData();
+    if (!axiosConfig || !canManageSchedules) {
+      setLoading(false);
+      return;
     }
-  }, [axiosConfig, loadData]);
+    loadData();
+  }, [axiosConfig, loadData, canManageSchedules]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -227,8 +230,25 @@ const ScheduleManagement = () => {
             <div>
               <span className="admin-hero-badge">Yêu cầu đăng nhập</span>
               <h1>Lập lịch thi đấu</h1>
+              <p>Bạn cần đăng nhập để truy cập chức năng này.</p>
+            </div>
+          </header>
+        </div>
+      </div>
+    );
+  }
+
+  if (!canManageSchedules) {
+    return (
+      <div className="admin-shell">
+        <div className="admin-wrapper">
+          <header className="admin-hero">
+            <div>
+              <span className="admin-hero-badge">Quyền hạn hạn chế</span>
+              <h1>Lập lịch thi đấu</h1>
               <p>
-                Bạn cần đăng nhập với quyền quản trị để truy cập chức năng này.
+                Bạn không có quyền lập lịch thi đấu. Liên hệ ban điều hành để
+                được cấp quyền.
               </p>
             </div>
           </header>

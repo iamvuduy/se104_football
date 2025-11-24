@@ -5,7 +5,14 @@ import React, {
   useRef,
   useMemo,
 } from "react";
-import { FaPencilAlt, FaTrash, FaSyncAlt } from "react-icons/fa";
+import {
+  FaPencilAlt,
+  FaTrash,
+  FaSyncAlt,
+  FaCheck,
+  FaTimes,
+} from "react-icons/fa";
+import { useAuth } from "../context/AuthContext";
 import "./AdminPanels.css";
 import "./GroupManagement.css";
 
@@ -32,6 +39,8 @@ const groupColors = [
 ];
 
 const GroupManagement = () => {
+  const { canAccessFeature } = useAuth();
+  const canManageGroups = canAccessFeature("manage_groups");
   const [groups, setGroups] = useState([]);
   const [unassignedTeams, setUnassignedTeams] = useState([]);
   const [newGroupName, setNewGroupName] = useState("");
@@ -68,6 +77,10 @@ const GroupManagement = () => {
   }, []);
 
   const fetchData = useCallback(async () => {
+    if (!canManageGroups) {
+      setLoading(false);
+      return;
+    }
     const token = localStorage.getItem("token");
     const headers = { Authorization: `Bearer ${token}` };
     try {
@@ -93,11 +106,15 @@ const GroupManagement = () => {
     } finally {
       setLoading(false);
     }
-  }, [displayToast]);
+  }, [displayToast, canManageGroups]);
 
   useEffect(() => {
+    if (!canManageGroups) {
+      setLoading(false);
+      return;
+    }
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, canManageGroups]);
 
   const handleApiCall = async (url, options) => {
     try {
@@ -124,6 +141,7 @@ const GroupManagement = () => {
 
   const handleCreateGroup = async (e) => {
     e.preventDefault();
+    if (!canManageGroups) return;
     if (!newGroupName.trim()) return;
     const result = await handleApiCall("/api/groups", {
       method: "POST",
@@ -137,6 +155,7 @@ const GroupManagement = () => {
   };
 
   const handleUpdateGroup = async (groupId) => {
+    if (!canManageGroups) return;
     if (!editingGroupName.trim()) return;
     const result = await handleApiCall(`/api/groups/${groupId}`, {
       method: "PUT",
@@ -151,6 +170,7 @@ const GroupManagement = () => {
   };
 
   const handleDeleteGroup = async (groupId) => {
+    if (!canManageGroups) return;
     if (window.confirm("Bạn có chắc chắn muốn xóa bảng đấu này không?")) {
       const result = await handleApiCall(`/api/groups/${groupId}`, {
         method: "DELETE",
@@ -186,6 +206,7 @@ const GroupManagement = () => {
 
   const handleDrop = async (e, targetGroupId) => {
     e.preventDefault();
+    if (!canManageGroups) return;
     setDraggedOverZone(null);
 
     const teamId = e.dataTransfer.getData("teamId");
@@ -272,6 +293,22 @@ const GroupManagement = () => {
       };
     }, [groups]);
 
+  if (!canManageGroups) {
+    return (
+      <div className="group-management-shell">
+        <div className="gm-page">
+          <div className="gm-board-empty">
+            <h3>Không có quyền truy cập</h3>
+            <p>
+              Bạn không được cấp phép để quản lý bảng đấu. Vui lòng liên hệ quản
+              trị hệ thống để được phân quyền.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (loading)
     return (
       <div className="admin-shell">
@@ -293,11 +330,11 @@ const GroupManagement = () => {
   };
 
   return (
-    <div className="admin-shell group-management-shell">
-      <div className="admin-wrapper">
+    <div className="group-management-shell">
+      <div className="gm-page">
         {isToastVisible && (
           <div
-            className={`admin-toast gm-toast-${toast.type}`}
+            className={`gm-toast gm-toast-${toast.type}`}
             onClick={() => {
               setIsToastVisible(false);
               if (toastTimerRef.current) {
@@ -311,24 +348,24 @@ const GroupManagement = () => {
           </div>
         )}
         {error && (
-          <div className="admin-alert" onClick={() => setError(null)}>
+          <div className="gm-alert" onClick={() => setError(null)}>
             {error} — nhấn để ẩn.
           </div>
         )}
 
-        <header className="admin-hero gm-hero">
-          <div>
-            <span className="admin-hero-badge">Phân bảng vòng bảng</span>
+        <header className="gm-page-hero">
+          <div className="gm-hero-copy">
+            <span className="gm-hero-tag">Trung tâm điều phối</span>
             <h1>Quản lý bảng đấu</h1>
             <p>
-              Kéo thả để phân nhóm trực quan, theo dõi trạng thái từng bảng và
-              tùy chỉnh tên khi cần.
+              Sắp xếp các đội nhanh chóng, theo dõi trạng thái lấp đầy và tùy
+              biến tên bảng ngay tại một nơi.
             </p>
           </div>
-          <div className="admin-hero-actions">
+          <div className="gm-hero-actions">
             <button
               type="button"
-              className="admin-btn is-ghost"
+              className="gm-btn is-ghost"
               onClick={handleRefresh}
             >
               <FaSyncAlt /> Làm mới dữ liệu
@@ -336,42 +373,38 @@ const GroupManagement = () => {
           </div>
         </header>
 
-        <ul className="admin-summary gm-summary" role="list">
-          <li className="admin-summary-item">
-            <span className="admin-summary-label">Số bảng đấu</span>
-            <strong className="admin-summary-value">{totalGroups}</strong>
-            <span className="admin-summary-hint">Đang hoạt động</span>
-          </li>
-          <li className="admin-summary-item">
-            <span className="admin-summary-label">Đội đã phân</span>
-            <strong className="admin-summary-value">{assignedCount}</strong>
-            <span className="admin-summary-hint">
-              Trong tổng {capacity} suất
-            </span>
-          </li>
-          <li className="admin-summary-item">
-            <span className="admin-summary-label">Đội chờ phân</span>
-            <strong className="admin-summary-value">
+        <section className="gm-insights">
+          <article className="gm-insight-card">
+            <span className="gm-insight-label">Số bảng đấu</span>
+            <strong className="gm-insight-value">{totalGroups}</strong>
+            <span className="gm-insight-hint">Đang hoạt động</span>
+          </article>
+          <article className="gm-insight-card">
+            <span className="gm-insight-label">Đội đã phân</span>
+            <strong className="gm-insight-value">{assignedCount}</strong>
+            <span className="gm-insight-hint">Trên tổng {capacity} suất</span>
+          </article>
+          <article className="gm-insight-card">
+            <span className="gm-insight-label">Đội chờ phân</span>
+            <strong className="gm-insight-value">
               {unassignedTeams.length}
             </strong>
-            <span className="admin-summary-hint">Ở danh sách bên trái</span>
-          </li>
-          <li className="admin-summary-item">
-            <span className="admin-summary-label">Tỉ lệ lấp đầy</span>
-            <strong className="admin-summary-value">{utilization}%</strong>
-            <span className="admin-summary-hint">
-              Còn {openSlots} suất trống toàn giải
-            </span>
-          </li>
-        </ul>
+            <span className="gm-insight-hint">Có sẵn để kéo thả</span>
+          </article>
+          <article className="gm-insight-card">
+            <span className="gm-insight-label">Tỉ lệ lấp đầy</span>
+            <strong className="gm-insight-value">{utilization}%</strong>
+            <span className="gm-insight-hint">Còn {openSlots} suất trống</span>
+          </article>
+        </section>
 
-        <div className="gm-admin-layout">
-          <aside className="gm-sidebar">
-            <section className="admin-card gm-side-card">
-              <header className="gm-side-head">
+        <div className="gm-layout">
+          <aside className="gm-panel">
+            <section className="gm-card gm-create-card">
+              <header className="gm-card-head">
                 <div>
-                  <h2>Tạo bảng đấu mới</h2>
-                  <span>Đặt tên rõ ràng để tiện theo dõi bảng.</span>
+                  <h2>Tạo bảng đấu</h2>
+                  <span>Đặt tên ngắn gọn để tiện theo dõi.</span>
                 </div>
               </header>
               <form onSubmit={handleCreateGroup} className="gm-form">
@@ -381,195 +414,216 @@ const GroupManagement = () => {
                   onChange={(e) => setNewGroupName(e.target.value)}
                   placeholder="Ví dụ: Bảng A"
                   required
-                  className="admin-input"
+                  className="gm-input"
                 />
-                <button type="submit" className="admin-btn is-primary">
+                <button type="submit" className="gm-btn is-primary">
                   Tạo bảng mới
                 </button>
               </form>
-              <p className="gm-side-note">
-                Mẹo: bạn có thể kéo thả thẻ đội ở bất kỳ bảng nào vào đây để bỏ
-                phân bổ.
+              <p className="gm-card-note">
+                Mẹo: kéo thả thẻ đội từ bất kỳ bảng nào vào khu này để hủy phân
+                bổ.
               </p>
             </section>
 
             <section
-              className={`admin-card gm-unassigned-card ${
+              className={`gm-card gm-unassigned ${
                 draggedOverZone === null ? "is-drop-target" : ""
               }`}
               onDragOver={(e) => handleDragOver(e, null)}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, null)}
             >
-              <header className="gm-side-head">
+              <header className="gm-card-head">
                 <div>
-                  <h2>Đội chưa phân nhóm</h2>
+                  <h2>Đội chờ phân</h2>
                   <span>Kéo vào bảng phù hợp hoặc thả lại đây để bỏ.</span>
                 </div>
-                <span className="gm-counter">{unassignedTeams.length}</span>
+                <span className="gm-chip">{unassignedTeams.length}</span>
               </header>
-              <div className="gm-team-search">
+              <div className="gm-search">
                 <input
                   type="search"
                   value={teamSearch}
                   onChange={(e) => setTeamSearch(e.target.value)}
-                  placeholder="Tìm kiếm theo tên đội"
-                  className="admin-input"
+                  placeholder="Tìm theo tên đội"
+                  className="gm-input"
                 />
               </div>
-              <div className="gm-team-list">
+              <div className="gm-team-scroll">
                 {filteredUnassignedTeams.length > 0 ? (
                   filteredUnassignedTeams.map((team) => (
                     <div
                       key={team.id}
-                      className="gm-team-chip"
+                      className="gm-team-pill"
                       draggable
                       onDragStart={(e) => handleDragStart(e, team, "null")}
                     >
-                      <span className="gm-team-dot" aria-hidden="true" />
-                      <span className="gm-team-name">{team.name}</span>
+                      <span className="gm-team-bullet" aria-hidden="true" />
+                      <span>{team.name}</span>
                     </div>
                   ))
                 ) : (
-                  <div className="gm-team-empty">
+                  <div className="gm-empty-hint">
                     {teamSearch
-                      ? "Không có đội phù hợp với tìm kiếm."
-                      : "Tất cả đội đã được phân vào bảng."}
+                      ? "Không tìm thấy đội phù hợp."
+                      : "Tất cả đội đã được phân bổ."}
                   </div>
                 )}
               </div>
             </section>
           </aside>
 
-          <main className="gm-main">
-            <section className="admin-card gm-board-card">
-              <header className="gm-board-head">
-                <div>
-                  <h2>Bảng phân nhóm</h2>
-                  <span>
-                    Theo dõi từng bảng với giao diện dạng bracket, các ô trống
-                    hiển thị rõ ràng để bạn cân bằng lực lượng.
-                  </span>
-                </div>
-              </header>
+          <main className="gm-board">
+            <div className="gm-board-header">
+              <div>
+                <h2>Danh sách bảng</h2>
+                <p>
+                  Quan sát từng bảng theo dạng thẻ, kéo thả để cân bằng lực
+                  lượng hoặc đổi tên ngay khi cần.
+                </p>
+              </div>
+              <div className="gm-board-meta">
+                <span>
+                  {assignedCount}/{capacity} suất đã dùng
+                </span>
+              </div>
+            </div>
 
-              {groups.length === 0 ? (
-                <div className="gm-empty-state">
-                  <h3>Chưa có bảng đấu nào</h3>
-                  <p>
-                    Tạo bảng đầu tiên ở khung bên trái để bắt đầu phân nhóm.
-                  </p>
-                </div>
-              ) : (
-                <div className="gm-groups-grid">
-                  {groups.map((group, index) => {
-                    const accent = groupColors[index % groupColors.length];
-                    const teamsInGroup = group.teams || [];
-                    const isGroupFull = teamsInGroup.length >= 4;
-                    const remainingSlots = Math.max(0, 4 - teamsInGroup.length);
-                    const placeholders = Array.from({ length: remainingSlots });
-                    return (
-                      <div
-                        key={group.id}
-                        className={`gm-bracket ${
-                          isGroupFull ? "is-full" : ""
-                        } ${
-                          draggedOverZone === group.id ? "is-drop-target" : ""
-                        }`}
-                        style={{ "--accent-color": accent }}
-                        onDragOver={(e) => handleDragOver(e, group.id)}
-                        onDragLeave={handleDragLeave}
-                        onDrop={(e) => handleDrop(e, group.id)}
-                      >
-                        <div className="gm-bracket-header">
-                          <div className="gm-bracket-titles">
-                            <span className="gm-bracket-chip">Bảng đấu</span>
+            {groups.length === 0 ? (
+              <div className="gm-board-empty">
+                <h3>Chưa có bảng đấu nào</h3>
+                <p>Tạo bảng ở khung bên trái để bắt đầu phân nhóm.</p>
+              </div>
+            ) : (
+              <div className="gm-group-grid">
+                {groups.map((group, index) => {
+                  const accent = groupColors[index % groupColors.length];
+                  const teamsInGroup = group.teams || [];
+                  const isGroupFull = teamsInGroup.length >= 4;
+                  const placeholders = Array.from({
+                    length: Math.max(0, 4 - teamsInGroup.length),
+                  });
+
+                  return (
+                    <section
+                      key={group.id}
+                      className={`gm-group-card ${
+                        isGroupFull ? "is-full" : ""
+                      } ${
+                        draggedOverZone === group.id ? "is-drop-target" : ""
+                      }`}
+                      style={{ "--accent-color": accent }}
+                      onDragOver={(e) => handleDragOver(e, group.id)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, group.id)}
+                    >
+                      <header className="gm-group-header">
+                        <div className="gm-group-title">
+                          <span className="gm-badge">Bảng đấu</span>
+                          {editingGroupId === group.id ? (
+                            <input
+                              type="text"
+                              className="gm-group-input"
+                              value={editingGroupName}
+                              onChange={(e) =>
+                                setEditingGroupName(e.target.value)
+                              }
+                              placeholder="Tên bảng"
+                              autoFocus
+                            />
+                          ) : (
+                            <h3>{group.name}</h3>
+                          )}
+                        </div>
+                        <div className="gm-group-side">
+                          <span className="gm-capacity">
+                            {teamsInGroup.length}/4 đội
+                          </span>
+                          <div className="gm-group-actions">
                             {editingGroupId === group.id ? (
-                              <input
-                                type="text"
-                                className="gm-bracket-input"
-                                value={editingGroupName}
-                                onChange={(e) =>
-                                  setEditingGroupName(e.target.value)
-                                }
-                                onBlur={() => handleUpdateGroup(group.id)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter")
-                                    handleUpdateGroup(group.id);
-                                  if (e.key === "Escape") {
+                              <>
+                                <button
+                                  type="button"
+                                  className="gm-icon-btn is-confirm"
+                                  onClick={() => handleUpdateGroup(group.id)}
+                                  aria-label="Lưu tên bảng"
+                                >
+                                  <FaCheck />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="gm-icon-btn is-muted"
+                                  onClick={() => {
                                     setEditingGroupId(null);
                                     setEditingGroupName("");
-                                  }
-                                }}
-                                autoFocus
-                              />
+                                  }}
+                                  aria-label="Hủy chỉnh sửa"
+                                >
+                                  <FaTimes />
+                                </button>
+                              </>
                             ) : (
-                              <h3>{group.name}</h3>
+                              <>
+                                <button
+                                  type="button"
+                                  className="gm-icon-btn"
+                                  onClick={() => {
+                                    setEditingGroupId(group.id);
+                                    setEditingGroupName(group.name);
+                                  }}
+                                  aria-label={`Chỉnh sửa ${group.name}`}
+                                >
+                                  <FaPencilAlt />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="gm-icon-btn is-danger"
+                                  onClick={() => handleDeleteGroup(group.id)}
+                                  aria-label={`Xóa ${group.name}`}
+                                >
+                                  <FaTrash />
+                                </button>
+                              </>
                             )}
                           </div>
-                          <div className="gm-bracket-meta">
-                            <span>
-                              {teamsInGroup.length}/4 đội
-                              {isGroupFull ? " • Đã đầy" : ""}
+                        </div>
+                      </header>
+
+                      <ul className="gm-slot-list">
+                        {teamsInGroup.map((team, teamIndex) => (
+                          <li
+                            key={team.id}
+                            className="gm-slot-item"
+                            draggable
+                            onDragStart={(e) =>
+                              handleDragStart(e, team, group.id)
+                            }
+                          >
+                            <span className="gm-slot-index">
+                              {teamIndex + 1}
                             </span>
-                            <div className="gm-bracket-actions">
-                              <button
-                                type="button"
-                                className="gm-icon-btn"
-                                onClick={() => {
-                                  setEditingGroupId(group.id);
-                                  setEditingGroupName(group.name);
-                                }}
-                                aria-label={`Chỉnh sửa ${group.name}`}
-                              >
-                                <FaPencilAlt />
-                              </button>
-                              <button
-                                type="button"
-                                className="gm-icon-btn is-danger"
-                                onClick={() => handleDeleteGroup(group.id)}
-                                aria-label={`Xóa ${group.name}`}
-                              >
-                                <FaTrash />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="gm-bracket-body">
-                          {teamsInGroup.map((team, teamIndex) => (
-                            <div
-                              key={team.id}
-                              className="gm-slot-item"
-                              draggable
-                              onDragStart={(e) =>
-                                handleDragStart(e, team, group.id)
-                              }
-                            >
-                              <span className="gm-slot-index">
-                                {teamIndex + 1}
-                              </span>
-                              <span className="gm-slot-name">{team.name}</span>
-                              <span className="gm-slot-tag">Đã phân</span>
-                            </div>
-                          ))}
-                          {placeholders.map((_, idx) => (
-                            <div key={idx} className="gm-slot-item is-empty">
-                              <span className="gm-slot-index">
-                                {teamsInGroup.length + idx + 1}
-                              </span>
-                              <span className="gm-slot-name">
-                                Chỗ trống chờ đội
-                              </span>
-                              <span className="gm-slot-tag">Kéo đội vào</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
+                            <span className="gm-slot-name">{team.name}</span>
+                            <span className="gm-slot-tag">Đã phân</span>
+                          </li>
+                        ))}
+                        {placeholders.map((_, idx) => (
+                          <li key={idx} className="gm-slot-item is-empty">
+                            <span className="gm-slot-index">
+                              {teamsInGroup.length + idx + 1}
+                            </span>
+                            <span className="gm-slot-name">
+                              Chỗ trống chờ đội
+                            </span>
+                            <span className="gm-slot-tag">Kéo đội vào</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  );
+                })}
+              </div>
+            )}
           </main>
         </div>
       </div>

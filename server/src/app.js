@@ -7,6 +7,7 @@ const resultRoutes = require("./routes/results");
 const leaderboardRoutes = require("./routes/leaderboard"); // Import leaderboard routes
 const playerRoutes = require("./routes/players");
 const settingsRoutes = require("./routes/settings");
+const permissionsRoutes = require("./routes/permissions");
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use("/api/results", authMiddleware, resultRoutes);
 app.use("/api/players", authMiddleware, playerRoutes);
 app.use("/api/leaderboard", authMiddleware, leaderboardRoutes); // Use leaderboard routes
 app.use("/api/settings", authMiddleware, settingsRoutes);
+app.use("/api/permissions", authMiddleware, permissionsRoutes);
 
 // Admin-only routes
 app.use("/api/users", authMiddleware, adminMiddleware, usersRoutes);

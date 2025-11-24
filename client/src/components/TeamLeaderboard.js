@@ -6,32 +6,72 @@ const TeamLeaderboard = () => {
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedDate, setSelectedDate] = useState("");
+  const [generatedDate, setGeneratedDate] = useState("");
   const { token } = useAuth();
 
+  const formatDisplayDate = (date) => {
+    if (!date) return "";
+    const [year, month, day] = date.split("-");
+    if (!year || !month || !day) {
+      return date;
+    }
+    return `${day}/${month}/${year}`;
+  };
+
   useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    const controller = new AbortController();
+
     const fetchLeaderboard = async () => {
+      setLoading(true);
+      setError(null);
+
       try {
-        const response = await fetch("/api/leaderboard/teams", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const params = new URLSearchParams();
+        if (selectedDate) {
+          params.append("asOf", selectedDate);
+        }
+
+        const query = params.toString();
+        const response = await fetch(
+          query ? `/api/leaderboard/teams?${query}` : `/api/leaderboard/teams`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            signal: controller.signal,
+          }
+        );
+
         if (!response.ok) {
           throw new Error("Failed to fetch team leaderboard");
         }
+
         const data = await response.json();
-        setTeams(data);
+        const leaderboardData = Array.isArray(data)
+          ? data
+          : data.leaderboard || [];
+
+        setTeams(leaderboardData);
+        setGeneratedDate(data.generatedAt || "");
       } catch (err) {
+        if (err.name === "AbortError") {
+          return;
+        }
         setError(err.message);
       } finally {
         setLoading(false);
       }
     };
 
-    if (token) {
-      fetchLeaderboard();
-    }
-  }, [token]);
+    fetchLeaderboard();
+
+    return () => controller.abort();
+  }, [token, selectedDate]);
 
   if (loading) {
     return <div className="team-leaderboard-loading">Loading...</div>;
@@ -49,6 +89,21 @@ const TeamLeaderboard = () => {
           <h1>Team Standings</h1>
           <p>Updated automatically from the latest match results</p>
         </header>
+
+        <div className="team-leaderboard-controls">
+          <label htmlFor="leaderboard-date">Xem bảng xếp hạng đến ngày</label>
+          <input
+            id="leaderboard-date"
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+          />
+          {generatedDate && (
+            <span className="team-leaderboard-asof">
+              Ngày dữ liệu: {formatDisplayDate(generatedDate)}
+            </span>
+          )}
+        </div>
 
         <table className="team-leaderboard-table">
           <thead>

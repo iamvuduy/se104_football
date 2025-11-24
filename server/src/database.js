@@ -107,6 +107,82 @@ const db = new sqlite3.Database(dbPath, (err) => {
 
       ensureTeamCodeSupport();
 
+      const ensureUserProfileColumns = () => {
+        db.all("PRAGMA table_info(users)", (err, columns) => {
+          if (err) {
+            console.error("Error inspecting users table", err.message);
+            return;
+          }
+
+          const columnNames = new Set(
+            Array.isArray(columns) ? columns.map((column) => column.name) : []
+          );
+
+          const statements = [];
+          if (!columnNames.has("full_name")) {
+            statements.push("ALTER TABLE users ADD COLUMN full_name TEXT");
+          }
+          if (!columnNames.has("email")) {
+            statements.push("ALTER TABLE users ADD COLUMN email TEXT UNIQUE");
+          }
+          if (!columnNames.has("dob")) {
+            statements.push("ALTER TABLE users ADD COLUMN dob TEXT");
+          }
+          if (!columnNames.has("position")) {
+            statements.push("ALTER TABLE users ADD COLUMN position TEXT");
+          }
+
+          const applyStatementsSequentially = (items, done) => {
+            if (!items.length) {
+              done();
+              return;
+            }
+            const [current, ...rest] = items;
+            db.run(current, (runErr) => {
+              if (
+                runErr &&
+                !/duplicate column name/i.test(String(runErr.message || ""))
+              ) {
+                console.error(
+                  `Error updating users table with statement "${current}"`,
+                  runErr.message
+                );
+              }
+              applyStatementsSequentially(rest, done);
+            });
+          };
+
+          applyStatementsSequentially(statements, () => {
+            db.run(
+              "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)"
+            );
+            db.run(
+              `
+                UPDATE users
+                SET
+                  full_name = CASE
+                    WHEN full_name IS NULL OR trim(full_name) = '' THEN username
+                    ELSE full_name
+                  END,
+                  email = CASE
+                    WHEN email IS NULL OR trim(email) = '' THEN lower(username) || '@example.com'
+                    ELSE lower(email)
+                  END,
+                  dob = CASE
+                    WHEN dob IS NULL OR trim(dob) = '' THEN '1970-01-01'
+                    ELSE dob
+                  END,
+                  position = CASE
+                    WHEN position IS NULL OR trim(position) = '' THEN
+                      CASE WHEN username = 'admin' THEN 'Ban tổ chức giải' ELSE 'Khán giả' END
+                    ELSE position
+                  END
+              `
+            );
+          });
+        });
+      };
+
       // Players table
       db.run(
         `
@@ -137,7 +213,11 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 )
             `,
         (err) => {
-          if (err) console.error("Error creating users table", err.message);
+          if (err) {
+            console.error("Error creating users table", err.message);
+            return;
+          }
+          ensureUserProfileColumns();
         }
       );
 

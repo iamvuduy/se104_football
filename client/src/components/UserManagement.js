@@ -2,21 +2,46 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import axios from "axios";
 import "./AdminPanels.css";
 import { FaUsersCog, FaTrash, FaUserShield, FaSyncAlt } from "react-icons/fa";
+import { useAuth } from "../context/AuthContext";
+import { ROLE_OPTIONS, ROLE_LABELS, resolveRole, ROLES } from "../utils/roles";
+import {
+  FEATURE_DEFINITIONS,
+  ROLE_ORDER as PERMISSION_ROLE_ORDER,
+  sanitizePermissionMatrix,
+} from "../utils/permissions";
 
 const UserManagement = () => {
+  const { user, canAccessFeature, featurePermissions, refreshPermissions } =
+    useAuth();
+  const canManageUsers = canAccessFeature("manage_users");
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
+  const [permissionMatrix, setPermissionMatrix] = useState(() =>
+    sanitizePermissionMatrix(featurePermissions.matrix)
+  );
+  const [permissionsDirty, setPermissionsDirty] = useState(false);
+  const [permissionsSaving, setPermissionsSaving] = useState(false);
 
   const loadUsers = useCallback(async () => {
+    if (!canManageUsers) {
+      setUsers([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError("");
     setToast("");
 
     try {
       const response = await axios.get("/api/users");
-      setUsers(response.data || []);
+      const normalized = (response.data || []).map((item) => ({
+        ...item,
+        role: resolveRole(item.role),
+      }));
+      setUsers(normalized);
     } catch (_err) {
       setError(
         "Không thể tải danh sách người dùng. Có thể bạn thiếu quyền truy cập."
@@ -24,23 +49,88 @@ const UserManagement = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [canManageUsers]);
 
   useEffect(() => {
     loadUsers();
   }, [loadUsers]);
 
-  const handleRoleChange = async (userId, newRole) => {
+  useEffect(() => {
+    if (!canManageUsers) {
+      return;
+    }
+    refreshPermissions();
+  }, [canManageUsers, refreshPermissions]);
+
+  useEffect(() => {
+    setPermissionMatrix(sanitizePermissionMatrix(featurePermissions.matrix));
+    setPermissionsDirty(false);
+  }, [featurePermissions.matrix]);
+
+  const handlePermissionToggle = (roleKey, featureKey) => {
+    if (!canManageUsers || roleKey === ROLES.SYSTEM_ADMIN) {
+      return;
+    }
+    setPermissionMatrix((prev) => {
+      const currentRole = prev[roleKey] || {};
+      const updatedRole = { ...currentRole };
+      updatedRole[featureKey] = !currentRole[featureKey];
+      return {
+        ...prev,
+        [roleKey]: updatedRole,
+      };
+    });
+    setPermissionsDirty(true);
+  };
+
+  const handleSavePermissions = async () => {
+    if (!canManageUsers || !permissionsDirty || permissionsSaving) {
+      return;
+    }
+    setPermissionsSaving(true);
     setError("");
     setToast("");
     try {
-      await axios.put(`/api/users/${userId}/role`, { role: newRole });
+      const response = await axios.put("/api/permissions", {
+        matrix: permissionMatrix,
+      });
+      const sanitized = sanitizePermissionMatrix(
+        response.data?.matrix || permissionMatrix
+      );
+      setPermissionMatrix(sanitized);
+      setPermissionsDirty(false);
+      setToast("Đã lưu cấu hình quyền truy cập.");
+      await refreshPermissions();
+    } catch (err) {
+      setError(
+        err?.response?.data?.message ||
+          "Không thể lưu cấu hình quyền. Vui lòng thử lại."
+      );
+    } finally {
+      setPermissionsSaving(false);
+    }
+  };
+
+  const handleRoleChange = async (userId, newRole) => {
+    if (!canManageUsers) {
+      return;
+    }
+    const normalizedRole = resolveRole(newRole);
+    if (!ROLE_LABELS[normalizedRole]) {
+      setError("Quyền hạn không hợp lệ.");
+      return;
+    }
+
+    setError("");
+    setToast("");
+    try {
+      await axios.put(`/api/users/${userId}/role`, { role: normalizedRole });
       setUsers((prev) =>
         prev.map((user) =>
           user.id === userId
             ? {
                 ...user,
-                role: newRole,
+                role: normalizedRole,
               }
             : user
         )
@@ -52,6 +142,9 @@ const UserManagement = () => {
   };
 
   const handleDeleteUser = async (userId, username) => {
+    if (!canManageUsers) {
+      return;
+    }
     if (!window.confirm(`Xóa tài khoản "${username}"?`)) {
       return;
     }
@@ -66,19 +159,41 @@ const UserManagement = () => {
     }
   };
 
-  const totalUsers = useMemo(() => users.length, [users]);
-  const adminUsers = useMemo(
-    () => users.filter((user) => user.role === "admin").length,
-    [users]
-  );
-  const normalUsers = useMemo(
-    () => totalUsers - adminUsers,
-    [totalUsers, adminUsers]
-  );
-  const distinctRoles = useMemo(
-    () => Array.from(new Set(users.map((user) => user.role))).length,
-    [users]
-  );
+  const { totalUsers, adminUsers, normalUsers, distinctRoles } = useMemo(() => {
+    const normalizedRoles = users.map((item) => resolveRole(item.role));
+    const total = normalizedRoles.length;
+    const adminCount = normalizedRoles.filter(
+      (role) => role === ROLES.SYSTEM_ADMIN
+    ).length;
+    const distinct = new Set(normalizedRoles).size;
+    return {
+      totalUsers: total,
+      adminUsers: adminCount,
+      normalUsers: total - adminCount,
+      distinctRoles: distinct,
+    };
+  }, [users]);
+
+  const featureList =
+    featurePermissions.features && featurePermissions.features.length > 0
+      ? featurePermissions.features
+      : FEATURE_DEFINITIONS;
+
+  if (!canManageUsers) {
+    return (
+      <div className="admin-shell">
+        <div className="admin-wrapper">
+          <header className="admin-hero">
+            <div>
+              <span className="admin-hero-badge">Quyền hạn hạn chế</span>
+              <h1>Quản lý người dùng</h1>
+              <p>Bạn không có quyền truy cập vào chức năng phân quyền.</p>
+            </div>
+          </header>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -199,16 +314,20 @@ const UserManagement = () => {
                     </td>
                   </tr>
                 ) : (
-                  users.map((user) => {
-                    const isLocked = user.username === "admin";
+                  users.map((account) => {
+                    const normalizedRole = resolveRole(account.role);
+                    const isLocked = account.username === "admin";
+                    const isSystemAdmin = normalizedRole === ROLES.SYSTEM_ADMIN;
+                    const roleLabel =
+                      ROLE_LABELS[normalizedRole] || normalizedRole;
                     return (
-                      <tr key={user.id}>
+                      <tr key={account.id}>
                         <td>
                           <div className="admin-inline">
-                            <span>{user.username}</span>
-                            {user.role === "admin" && (
+                            <span>{account.username}</span>
+                            {isSystemAdmin && (
                               <span className="admin-badge">
-                                <FaUserShield aria-hidden="true" /> Admin
+                                <FaUserShield aria-hidden="true" /> {roleLabel}
                               </span>
                             )}
                           </div>
@@ -216,15 +335,18 @@ const UserManagement = () => {
                         <td>
                           <select
                             className="admin-select"
-                            value={user.role}
+                            value={normalizedRole}
                             onChange={(event) =>
-                              handleRoleChange(user.id, event.target.value)
+                              handleRoleChange(account.id, event.target.value)
                             }
                             disabled={isLocked}
-                            aria-label={`Thay đổi quyền hạn cho ${user.username}`}
+                            aria-label={`Thay đổi quyền hạn cho ${account.username}`}
                           >
-                            <option value="user">Người dùng</option>
-                            <option value="admin">Quản trị viên</option>
+                            {ROLE_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
                           </select>
                         </td>
                         <td>
@@ -232,10 +354,10 @@ const UserManagement = () => {
                             type="button"
                             className="admin-btn is-danger is-icon admin-icon-btn"
                             onClick={() =>
-                              handleDeleteUser(user.id, user.username)
+                              handleDeleteUser(account.id, account.username)
                             }
                             disabled={isLocked}
-                            aria-label={`Xóa người dùng ${user.username}`}
+                            aria-label={`Xóa người dùng ${account.username}`}
                           >
                             <FaTrash />
                           </button>
@@ -246,6 +368,79 @@ const UserManagement = () => {
                 )}
               </tbody>
             </table>
+          </div>
+        </section>
+
+        <section className="admin-card">
+          <header>
+            <h2>
+              <FaUsersCog aria-hidden="true" /> Cấu hình quyền truy cập
+            </h2>
+            <span>
+              Bật/tắt tính năng cho từng vai trò. Quyền của quản trị hệ thống
+              luôn được giữ đầy đủ.
+            </span>
+          </header>
+
+          <div className="permission-table-wrapper">
+            <table className="permission-table">
+              <thead>
+                <tr>
+                  <th scope="col">Vai trò</th>
+                  {featureList.map((feature) => (
+                    <th
+                      key={feature.key}
+                      scope="col"
+                      title={feature.description}
+                    >
+                      {feature.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {PERMISSION_ROLE_ORDER.map((roleKey) => {
+                  const label = ROLE_LABELS[roleKey] || roleKey;
+                  const row = permissionMatrix[roleKey] || {};
+                  const isLocked = roleKey === ROLES.SYSTEM_ADMIN;
+                  return (
+                    <tr key={roleKey}>
+                      <th scope="row">{label}</th>
+                      {featureList.map((feature) => (
+                        <td key={`${roleKey}-${feature.key}`}>
+                          <label className="permission-checkbox">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(row[feature.key])}
+                              onChange={() =>
+                                handlePermissionToggle(roleKey, feature.key)
+                              }
+                              disabled={isLocked || permissionsSaving}
+                              aria-label={`${label} - ${feature.label}`}
+                            />
+                            <span />
+                          </label>
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="permission-actions">
+            <button
+              type="button"
+              className="admin-btn is-primary"
+              onClick={handleSavePermissions}
+              disabled={!permissionsDirty || permissionsSaving}
+            >
+              {permissionsSaving ? "Đang lưu..." : "Lưu cấu hình quyền"}
+            </button>
+            {permissionsDirty && !permissionsSaving && (
+              <span className="permission-hint">Chưa lưu thay đổi</span>
+            )}
           </div>
         </section>
       </div>

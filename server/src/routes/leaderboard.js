@@ -6,6 +6,20 @@ const { loadSettings } = require("../services/settingsService");
 // GET /api/leaderboard/teams - Get team leaderboard
 router.get("/teams", async (req, res) => {
   try {
+    const { asOf } = req.query || {};
+    let asOfDate = null;
+
+    if (asOf) {
+      const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+      if (!isoDatePattern.test(asOf)) {
+        return res.status(400).json({
+          error:
+            "Invalid date format. Please use ISO format YYYY-MM-DD for asOf parameter.",
+        });
+      }
+      asOfDate = asOf;
+    }
+
     const settings = await loadSettings();
 
     const teams = await new Promise((resolve, reject) => {
@@ -16,7 +30,15 @@ router.get("/teams", async (req, res) => {
     });
 
     const matches = await new Promise((resolve, reject) => {
-      db.all("SELECT * FROM match_results", [], (err, rows) => {
+      let sql = "SELECT * FROM match_results";
+      const params = [];
+
+      if (asOfDate) {
+        sql += " WHERE date(match_date) <= date(?)";
+        params.push(asOfDate);
+      }
+
+      db.all(sql, params, (err, rows) => {
         if (err) reject(err);
         else resolve(rows);
       });
@@ -175,7 +197,24 @@ router.get("/teams", async (req, res) => {
 
     leaderboard.sort(comparator);
 
-    res.json(leaderboard);
+    const latestMatchDate = matches.reduce((latest, match) => {
+      if (!match.match_date) {
+        return latest;
+      }
+      if (!latest) {
+        return match.match_date;
+      }
+      return match.match_date > latest ? match.match_date : latest;
+    }, null);
+
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const generatedAt = asOfDate || latestMatchDate || todayIso;
+
+    res.json({
+      leaderboard,
+      generatedAt,
+      requestedDate: asOfDate,
+    });
   } catch (error) {
     res.status(500).json({ error: "Failed to generate leaderboard." });
   }

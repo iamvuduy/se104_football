@@ -5,23 +5,34 @@ import Navbar from "./Navbar";
 const Layout = () => {
   const location = useLocation();
 
-  const fluidLayoutPaths = [
-    '/',
-    '/register-team',
-    '/teams', 
-    '/admin/users',
-    '/admin/schedules',
+  // Pages that don't need Bootstrap container wrapper
+  const noContainerPaths = [
+    "/",
+    "/register-team",
+    "/teams",
+    "/team-leaderboard",
+    "/top-scorer-leaderboard",
+    "/player-leaderboard",
+    "/player-lookup",
+    "/match-results",
+    "/record-result",
+    "/admin/users",
+    "/admin/schedules",
+    "/admin/tournament-settings",
+    "/login",
+    "/register",
   ];
 
-  const useFluidLayout = fluidLayoutPaths.some(path => location.pathname.startsWith(path));
+  const useNoContainer = noContainerPaths.some(
+    (path) =>
+      location.pathname === path || location.pathname.startsWith(path + "/")
+  );
 
   return (
     <>
       <Navbar />
-      {useFluidLayout ? (
-        <div className="container-fluid mt-4">
-          <Outlet />
-        </div>
+      {useNoContainer ? (
+        <Outlet />
       ) : (
         <div className="container mt-4">
           <Outlet />

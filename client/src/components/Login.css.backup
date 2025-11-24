@@ -1,0 +1,141 @@
+/* client/src/components/Login.css */
+
+.auth-container {
+    background-color: var(--off-white);
+    min-height: 100vh;
+}
+
+.auth-split-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 100vh;
+}
+
+.auth-branding {
+  background-image: url('../../public/ce.jpg');
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+  text-align: center;
+}
+
+.auth-branding-content {
+    background-color: rgba(5, 56, 107, 0.7);
+    padding: 2rem;
+    border-radius: 10px;
+}
+
+.auth-form-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+}
+
+.auth-form-card {
+    width: 100%;
+    max-width: 400px;
+    background: #fff;
+    padding: 2.5rem;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.auth-form-card h2 {
+    color: var(--dark-blue);
+    font-family: var(--font-heading);
+    text-transform: uppercase;
+    font-size: 2rem;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.input-group {
+    position: relative;
+    margin-bottom: 2.5rem;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 10px 0;
+    font-size: 1rem;
+    color: var(--dark-blue);
+    border: none;
+    border-bottom: 2px solid #ccc;
+    outline: none;
+    background: transparent;
+}
+
+.input-group label {
+    position: absolute;
+    top: 10px;
+    left: 0;
+    font-size: 1rem;
+    color: #aaa;
+    pointer-events: none;
+    transition: 0.3s ease-out;
+}
+
+.input-group input:focus ~ label,
+.input-group input:not(:placeholder-shown) ~ label {
+    top: -20px;
+    font-size: 0.8rem;
+    color: var(--teal);
+}
+
+.input-group input:focus {
+    border-bottom-color: var(--teal);
+}
+
+.password-toggle {
+    position: absolute;
+    top: 10px;
+    right: 0;
+    cursor: pointer;
+    color: #aaa;
+    font-size: 0.9rem;
+}
+
+.auth-button {
+    width: 100%;
+    padding: 0.8rem;
+    border: none;
+    background-color: var(--teal);
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.auth-button:hover {
+    background-color: var(--dark-blue);
+}
+
+.error-message {
+    color: #e74c3c;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.switch-form-text {
+    text-align: center;
+    margin-top: 1.5rem;
+    color: #aaa;
+}
+
+.switch-form-text a {
+    color: var(--teal);
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.switch-form-text a:hover {
+    text-decoration: underline;
+}

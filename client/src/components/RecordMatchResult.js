@@ -6,7 +6,8 @@ import { useNavigate } from "react-router-dom";
 import NotificationModal from "./NotificationModal";
 
 const RecordMatchResult = () => {
-  const { token } = useAuth(); // Get the auth token
+  const { token, canAccessFeature } = useAuth();
+  const canRecordResults = canAccessFeature("record_match_results");
   const navigate = useNavigate();
 
   const [showModal, setShowModal] = useState(false);
@@ -33,7 +34,7 @@ const RecordMatchResult = () => {
   const [goals, setGoals] = useState([]);
 
   useEffect(() => {
-    if (!token) {
+    if (!token || !canRecordResults) {
       return;
     }
 
@@ -88,11 +89,11 @@ const RecordMatchResult = () => {
       active = false;
       controller.abort();
     };
-  }, [token]);
+  }, [token, canRecordResults]);
 
   const fetchPlayers = useCallback(
     (teamId, teamNumber) => {
-      if (!teamId || !token) return;
+      if (!teamId || !token || !canRecordResults) return;
       fetch(`/api/teams/${teamId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -110,7 +111,7 @@ const RecordMatchResult = () => {
           console.error(`Error fetching players for team ${teamId}:`, err)
         );
     },
-    [token]
+    [token, canRecordResults]
   );
 
   const goalTypes = useMemo(() => {
@@ -387,6 +388,22 @@ const RecordMatchResult = () => {
               <span className="admin-hero-badge">Yêu cầu đăng nhập</span>
               <h1>Ghi nhận kết quả</h1>
               <p>Bạn cần đăng nhập để tiếp tục.</p>
+            </div>
+          </header>
+        </div>
+      </div>
+    );
+  }
+
+  if (!canRecordResults) {
+    return (
+      <div className="admin-shell">
+        <div className="admin-wrapper">
+          <header className="admin-hero">
+            <div>
+              <span className="admin-hero-badge">Quyền hạn hạn chế</span>
+              <h1>Ghi nhận kết quả</h1>
+              <p>Bạn không có quyền ghi nhận kết quả trận đấu.</p>
             </div>
           </header>
         </div>

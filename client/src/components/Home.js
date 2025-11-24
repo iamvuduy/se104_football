@@ -4,8 +4,13 @@ import { useAuth } from "../context/AuthContext";
 import "./Home.css";
 
 const Home = () => {
-  const { user, token } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const { user, token, canAccessFeature } = useAuth();
+  const canManageTournament = [
+    "manage_schedules",
+    "manage_groups",
+    "manage_settings",
+    "record_match_results",
+  ].some((feature) => canAccessFeature(feature));
   const [overview, setOverview] = useState({ groups: 0, teams: 0, matches: 0 });
   const [topTeams, setTopTeams] = useState([]);
   const [recentMatches, setRecentMatches] = useState([]);
@@ -87,78 +92,74 @@ const Home = () => {
   }, [token, refreshKey]);
 
   const actionLinks = useMemo(() => {
-    const role = user?.role || "user";
     const links = [
       {
         to: "/register-team",
         icon: "bi bi-person-plus-fill",
         title: "Đăng ký đội bóng",
         description: "Tiếp nhận hồ sơ đăng ký của các đội bóng mới.",
-        roles: ["admin"],
+        feature: "register_team",
       },
       {
         to: "/teams",
         icon: "bi bi-people-fill",
         title: "Danh sách đội bóng",
         description: "Theo dõi thông tin và trạng thái của từng đội.",
-      },
-      {
-        to: "/admin/group-management",
-        icon: "bi bi-grid-fill",
-        title: "Quản lý bảng đấu",
-        description: "Sắp xếp đội bóng vào từng bảng một cách trực quan.",
-        roles: ["admin"],
+        feature: "view_teams",
       },
       {
         to: "/admin/tournament-settings",
         icon: "bi bi-sliders",
         title: "Cài đặt giải đấu",
         description: "Tùy chỉnh quy định giải và áp dụng tức thì.",
-        roles: ["admin"],
+        feature: "manage_settings",
       },
       {
         to: "/admin/schedules",
         icon: "bi bi-calendar-event",
         title: "Lịch thi đấu",
         description: "Lập và điều chỉnh lịch thi đấu theo từng vòng.",
-        roles: ["admin"],
+        feature: "manage_schedules",
       },
       {
         to: "/record-result",
         icon: "bi bi-trophy-fill",
         title: "Ghi nhận kết quả",
         description: "Cập nhật tỉ số và thông tin bàn thắng sau mỗi trận.",
-        roles: ["admin"],
+        feature: "record_match_results",
       },
       {
         to: "/match-results",
         icon: "bi bi-clipboard-data",
         title: "Kết quả trận đấu",
         description: "Tổng hợp các trận đấu đã diễn ra gần đây.",
+        feature: "view_match_results",
       },
       {
         to: "/team-leaderboard",
         icon: "bi bi-bar-chart-fill",
         title: "Bảng xếp hạng",
         description: "Xem phong độ tổng quan của các đội bóng.",
+        feature: "view_leaderboards",
       },
       {
         to: "/top-scorer-leaderboard",
         icon: "bi bi-award-fill",
         title: "Vua phá lưới",
         description: "Theo dõi các cầu thủ ghi bàn nhiều nhất.",
+        feature: "view_leaderboards",
       },
       {
         to: "/admin/users",
         icon: "bi bi-person-gear",
         title: "Quản lý người dùng",
         description: "Phân quyền và cập nhật tài khoản hệ thống.",
-        roles: ["admin"],
+        feature: "manage_users",
       },
     ];
 
-    return links.filter((link) => !link.roles || link.roles.includes(role));
-  }, [user?.role]);
+    return links.filter((link) => canAccessFeature(link.feature));
+  }, [canAccessFeature]);
 
   const formatMatchDate = (value) => {
     if (!value) {
@@ -198,7 +199,9 @@ const Home = () => {
       <header className="home-hero">
         <div className="home-hero-text">
           <span className="home-hero-badge">
-            {isAdmin ? "Bảng điều khiển quản trị" : "Bảng điều khiển giải đấu"}
+            {canManageTournament
+              ? "Bảng điều khiển quản trị"
+              : "Bảng điều khiển giải đấu"}
           </span>
           <h1>
             Chào mừng trở lại{user?.username ? `, ${user.username}` : "!"}
@@ -208,7 +211,7 @@ const Home = () => {
             các chức năng quan trọng chỉ với một cú nhấp chuột.
           </p>
           <div className="home-hero-actions">
-            {isAdmin && (
+            {canAccessFeature("manage_groups") && (
               <Link
                 to="/admin/group-management"
                 className="home-hero-button is-primary"
@@ -216,15 +219,17 @@ const Home = () => {
                 Quản lý bảng đấu
               </Link>
             )}
-            <Link
-              to="/teams"
-              className={`home-hero-button ${
-                isAdmin ? "is-ghost" : "is-primary"
-              }`}
-            >
-              Xem danh sách đội
-            </Link>
-            {!isAdmin && (
+            {canAccessFeature("view_teams") && (
+              <Link
+                to="/teams"
+                className={`home-hero-button ${
+                  canManageTournament ? "is-ghost" : "is-primary"
+                }`}
+              >
+                Xem danh sách đội
+              </Link>
+            )}
+            {canAccessFeature("view_leaderboards") && !canManageTournament && (
               <Link
                 to="/team-leaderboard"
                 className="home-hero-button is-ghost"

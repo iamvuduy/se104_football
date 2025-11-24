@@ -1,194 +1,123 @@
-/* client/src/components/Details.css */
 
-:root {
-    --font-heading: 'Oswald', sans-serif;
-    --font-body: 'Roboto Condensed', sans-serif;
-    --green-accent: #00ff87;
-    --dark-bg: #1f2833;
-    --card-bg: rgba(44, 62, 80, 0.85);
-    --light-text: #FFFFFF;
-    --primary-green: #27ae60;
-    --border-color: rgba(0, 255, 135, 0.2);
-    --danger-color: #e74c3c;
+/* Details Pages - Modern Layout */
+.details-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+  min-height: 100vh;
 }
 
-.registration-container {
-    font-family: var(--font-body);
-    background: var(--off-white);
-    padding: 1.5rem;
-    min-height: calc(100vh - 56px);
-    color: var(--dark-blue);
+.details-header {
+  background: white;
+  border-radius: 12px;
+  padding: 2.5rem 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  text-align: center;
 }
 
-.registration-form-card {
-    background: #fff;
-    border-radius: 10px;
-    padding: 1.5rem;
-    border: 1px solid #ddd;
-    margin-bottom: 2rem;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+.details-header h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1a2332;
+  margin-bottom: 0.5rem;
 }
 
-.registration-form-card h2, .registration-form-card h3 {
-    font-family: var(--font-heading);
-    color: var(--dark-blue);
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+.details-header p {
+  color: #7f8c9a;
+  font-size: 1.1rem;
+  margin: 0;
 }
 
-.form-label {
-    font-family: var(--font-heading);
-    font-weight: 400;
-    text-transform: uppercase;
-    color: var(--dark-blue);
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
+.details-content {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
 }
 
-.form-control, .form-select {
-    background-color: #fff;
-    color: var(--dark-blue);
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 0.6rem 1rem;
-    font-family: var(--font-body);
+.details-section {
+  margin-bottom: 2rem;
 }
 
-.form-control:focus, .form-select:focus {
-    background-color: #fff;
-    color: var(--dark-blue);
-    border-color: var(--primary-green);
-    box-shadow: 0 0 5px rgba(39, 174, 96, 0.5);
+.details-section h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a2332;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #f0f3f7;
 }
 
-.btn-primary {
-    font-family: var(--font-heading);
-    background: var(--primary-green);
-    border: none;
-    color: #fff;
-    text-transform: uppercase;
-    font-weight: 700;
-    padding: 0.8rem 2rem;
-    border-radius: 5px;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(0, 255, 135, 0.2);
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
 }
 
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 255, 135, 0.3);
-    background: #2ecc71;
+.details-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
-.btn-secondary {
-    font-family: var(--font-heading);
-    background: #6c757d;
-    border: none;
-    color: #fff;
-    text-transform: uppercase;
+.details-item label {
+  font-weight: 600;
+  color: #7f8c9a;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.btn-secondary:hover {
-    background: #5a6268;
+.details-item value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1a2332;
 }
 
-/* Table styles */
-.player-table {
-    width: 100%;
-    border-collapse: collapse;
-    color: var(--dark-blue);
+.details-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
 }
 
-.player-table thead th {
-    font-family: var(--font-heading);
-    text-transform: uppercase;
-    color: var(--dark-blue);
-    text-align: left;
-    padding: 12px 15px;
-    border-bottom: 2px solid var(--dark-blue);
+.details-table thead {
+  background: #f8f9fb;
 }
 
-.player-table tbody tr {
-    border-bottom: 1px solid #ddd;
+.details-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: #1a2332;
+  font-size: 0.85rem;
+  text-transform: uppercase;
 }
 
-.player-table td {
-    padding: 8px 15px;
-    vertical-align: middle;
+.details-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #f0f3f7;
 }
 
-.player-table .btn-danger {
-    background: transparent;
-    border: none;
-    color: #dc3545;
-    font-size: 1.1rem;
-    transition: color 0.3s ease;
+.details-table tbody tr:hover {
+  background: #f8f9fb;
 }
 
-.player-table .btn-danger:hover {
-    color: #c82333;
-}
-
-/* History List */
-.list-group-item {
-    background-color: #fff;
-    border: 1px solid #ddd;
-    color: var(--dark-blue);
-    margin-bottom: 5px;
-    border-radius: 5px;
-}
-
-.list-group-item-action:hover {
-    background-color: #f8f9fa;
-    border-color: #ddd;
-    color: var(--dark-blue);
-}
-
-.badge.bg-primary {
-    background-color: var(--primary-green) !important;
-}
-
-/* Validation */
-.form-control.is-invalid, .form-select.is-invalid {
-    border-color: var(--danger-color) !important;
-}
-
-.form-control.is-invalid:focus, .form-select.is-invalid:focus {
-    box-shadow: 0 0 0 0.25rem rgba(231, 76, 60, 0.25);
-}
-
-.player-table tbody tr:focus-within {
-  outline: 1px solid var(--primary-green);
-  outline-offset: -1px;
-}
-
-/* Override Bootstrap table styles for a light theme */
-.player-table th,
-.player-table td {
-    background-color: transparent !important;
-    border-color: #ddd;
-}
-
-/* Make sure inputs in the table are light */
-.player-table .form-control,
-.player-table .form-select {
-    background-color: #fff;
-    color: var(--dark-blue);
-    border-color: #ccc;
-}
-
-.player-table .form-control:focus,
-.player-table .form-select:focus {
-    background-color: #fff;
-    border-color: var(--primary-green);
-}
-
-/* Style for select dropdown options */
-.player-table .form-select option {
-    background: #fff;
-    color: var(--dark-blue);
+@media (max-width: 767px) {
+  .details-container {
+    padding: 1rem 0.5rem;
+  }
+  
+  .details-header {
+    padding: 2rem 1.5rem;
+  }
+  
+  .details-header h1 {
+    font-size: 1.75rem;
+  }
+  
+  .details-grid {
+    grid-template-columns: 1fr;
+  }
 }

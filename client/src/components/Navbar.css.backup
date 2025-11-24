@@ -1,0 +1,157 @@
+@import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');
+
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--dark-blue);
+  padding: 1rem 2rem;
+  border-bottom: 1px solid var(--dark-blue);
+}
+
+.navbar-left .navbar-brand {
+  font-family: 'Anton', sans-serif;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--off-white);
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.navbar-center {
+  flex-grow: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.navbar-center .navbar-nav {
+  display: flex;
+  flex-direction: row;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex-wrap: nowrap;
+}
+
+.navbar-center .nav-item {
+  margin: 0 0.8rem;
+}
+
+.navbar-center .nav-link {
+  color: var(--off-white);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.08rem;
+  font-weight: normal;
+  font-size: 0.9rem;
+  padding: 14px 0;
+}
+
+/* Dropdown styles */
+.nav-item.dropdown {
+    position: relative;
+}
+
+.dropdown-content {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    background-color: var(--dark-blue);
+    min-width: 220px; /* Adjusted width */
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 100;
+    list-style: none;
+    padding: 0.5rem 0; /* Add some padding */
+    margin: 10px 0 0; /* Margin to create space for the caret */
+    border-radius: 6px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, 10px);
+    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+    pointer-events: none;
+}
+
+/* Caret (arrow) */
+.dropdown-content::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 0 8px 10px 8px;
+    border-style: solid;
+    border-color: transparent transparent var(--dark-blue) transparent;
+}
+
+
+.dropdown-content .nav-link {
+    color: var(--off-white);
+    padding: 12px 20px; /* More padding */
+    text-decoration: none;
+    display: block;
+    text-align: left;
+    transition: background-color 0.2s ease; /* Smooth background transition */
+}
+
+.dropdown-content .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1); /* Lighter blue on hover */
+}
+
+.dropdown-content.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+    pointer-events: auto;
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+}
+
+.btn-login {
+  background-color: var(--teal);
+  color: var(--off-white);
+  border: 2px solid var(--teal);
+  padding: 0.5rem 1.5rem;
+  text-transform: uppercase;
+  font-weight: bold;
+  text-decoration: none;
+  border-radius: 5px;
+  transition: all 0.3s ease;
+}
+
+.btn-login:hover {
+  background-color: var(--bright-green);
+  color: var(--dark-blue);
+  border-color: var(--bright-green);
+}
+
+.welcome-text {
+  color: var(--off-white);
+  margin-right: 1rem;
+  font-size: 0.9rem;
+}
+
+.btn-logout {
+  background-color: transparent;
+  color: var(--off-white);
+  border: 2px solid var(--off-white);
+  padding: 0.5rem 1rem;
+  text-transform: uppercase;
+  font-weight: bold;
+  text-decoration: none;
+  border-radius: 5px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.btn-logout:hover {
+  background-color: var(--off-white);
+  color: var(--dark-blue);
+}
