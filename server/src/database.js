@@ -123,7 +123,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
             statements.push("ALTER TABLE users ADD COLUMN full_name TEXT");
           }
           if (!columnNames.has("email")) {
-            statements.push("ALTER TABLE users ADD COLUMN email TEXT UNIQUE");
+            statements.push("ALTER TABLE users ADD COLUMN email TEXT");
           }
           if (!columnNames.has("dob")) {
             statements.push("ALTER TABLE users ADD COLUMN dob TEXT");
