@@ -1,8 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-import NotificationModal from "./NotificationModal";
 import "./TeamRegistration.css";
+import {
+  FaCheckCircle,
+  FaExclamationCircle,
+} from "react-icons/fa";
 
 const TEAM_CODE_REGEX = /^FC\d{3}$/;
 
@@ -26,11 +29,20 @@ const calculateAge = (dob) => {
 const EditTeam = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [notification, setNotification] = useState({
-    isOpen: false,
-    type: "",
-    message: "",
-  });
+  const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
+
+  // Auto-hide toast after 3 seconds
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => {
+        setToast(null);
+        if (toast.type === "success") {
+          navigate("/teams"); // Redirect after successful update
+        }
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast, navigate]);
 
   const [teamCode, setTeamCode] = useState("");
   const [teamName, setTeamName] = useState("");
@@ -42,26 +54,33 @@ const EditTeam = () => {
 
   const endOfPlayersRef = useRef(null);
 
-  const handleCloseNotification = () => {
-    setNotification({ isOpen: false, type: "", message: "" });
-    if (notification.type === "success") {
-      navigate("/teams"); // Redirect after successful update
-    }
-  };
+
 
   useEffect(() => {
     const fetchTeamData = async () => {
       try {
         const response = await axios.get(`/api/teams/${id}`);
+        console.log("=== DEBUG: Team API Response ===");
+        console.log("Full response.data:", response.data);
+        console.log("Players from API:", response.data.players);
         const { team_code, name, home_stadium, players } = response.data;
         setTeamCode(team_code);
         setTeamName(name);
         setHomeStadium(home_stadium);
-        setPlayers(players.map((p) => ({ ...p, dob: p.dob.split("T")[0] }))); // Format date for input
+        const mappedPlayers = players.map((p) => {
+          console.log("Player from DB:", p);
+          console.log("p.player_code:", p.player_code);
+          return { 
+            ...p, 
+            dob: p.dob.split("T")[0],
+            playerCode: p.player_code // Map player_code from DB to playerCode
+          };
+        });
+        console.log("Mapped players:", mappedPlayers);
+        setPlayers(mappedPlayers); // Format date for input
       } catch (error) {
         console.error("Failed to fetch team data:", error);
-        setNotification({
-          isOpen: true,
+        setToast({
           type: "error",
           message: "Không thể tải dữ liệu đội bóng.",
         });
@@ -124,6 +143,7 @@ const EditTeam = () => {
         return prev;
       }
       const extras = Array.from({ length: minPlayers - prev.length }, () => ({
+        playerCode: "",
         name: "",
         dob: "",
         type: "Trong nước",
@@ -147,8 +167,7 @@ const EditTeam = () => {
 
   const handleAddPlayer = () => {
     if (players.length >= maxPlayers) {
-      setNotification({
-        isOpen: true,
+      setToast({
         type: "error",
         message: `Số lượng cầu thủ đã đạt tối đa (${maxPlayers}).`,
       });
@@ -156,7 +175,7 @@ const EditTeam = () => {
     }
     setPlayers([
       ...players,
-      { name: "", dob: "", type: "Trong nước", notes: "" },
+      { playerCode: "", name: "", dob: "", type: "Trong nước", notes: "" },
     ]);
   };
 
@@ -166,8 +185,7 @@ const EditTeam = () => {
       values.splice(index, 1);
       setPlayers(values);
     } else {
-      setNotification({
-        isOpen: true,
+      setToast({
         type: "error",
         message: `Đội bóng phải có ít nhất ${minPlayers} cầu thủ.`,
       });
@@ -210,9 +228,25 @@ const EditTeam = () => {
     let hasAgeError = false;
     let hasDobError = false;
     let hasNameError = false;
+    let hasPlayerCodeError = false;
+    const playerCodeSet = new Set();
+    let hasDuplicatePlayerCode = false;
 
     players.forEach((player, index) => {
       const playerError = {};
+      
+      // Validate player code
+      const code = (player.playerCode || "").trim();
+      if (!code) {
+        playerError.playerCode = true;
+        hasPlayerCodeError = true;
+      } else if (playerCodeSet.has(code)) {
+        playerError.playerCode = true;
+        hasDuplicatePlayerCode = true;
+      } else {
+        playerCodeSet.add(code);
+      }
+      
       if (!player.name.trim()) {
         playerError.name = true;
         hasNameError = true;
@@ -257,6 +291,14 @@ const EditTeam = () => {
       errorMessages.push("Tên cầu thủ không được để trống.");
     }
 
+    if (hasPlayerCodeError) {
+      errorMessages.push("Mã cầu thủ không được để trống.");
+    }
+
+    if (hasDuplicatePlayerCode) {
+      errorMessages.push("Mã cầu thủ bị trùng lặp.");
+    }
+
     if (playerErrors.length > 0) {
       newErrors.players = playerErrors;
     }
@@ -282,8 +324,7 @@ const EditTeam = () => {
     const validationMessages = validateForm();
 
     if (validationMessages.length > 0) {
-      setNotification({
-        isOpen: true,
+      setToast({
         type: "error",
         message: validationMessages.join(" "),
       });
@@ -298,20 +339,19 @@ const EditTeam = () => {
         homeStadium,
         players,
       });
-      setNotification({
-        isOpen: true,
+      setToast({
         type: "success",
         message: "Cập nhật đội bóng thành công!",
       });
     } catch (error) {
       const errorMessage =
+        error.response?.data?.error ||
         error.response?.data?.message ||
         error.message ||
-        "Something went wrong";
-      setNotification({
-        isOpen: true,
+        "Đã có lỗi xảy ra, vui lòng thử lại.";
+      setToast({
         type: "error",
-        message: `Lỗi: ${errorMessage}`,
+        message: errorMessage,
       });
     }
   };
@@ -322,12 +362,12 @@ const EditTeam = () => {
 
   return (
     <div className="registration-container">
-      <NotificationModal
-        isOpen={notification.isOpen}
-        type={notification.type}
-        message={notification.message}
-        onClose={handleCloseNotification}
-      />
+      {toast && (
+        <div className={`toast-notification toast-${toast.type}`}>
+          {toast.type === "success" ? <FaCheckCircle /> : <FaExclamationCircle />}
+          {toast.message}
+        </div>
+      )}
       <div className="registration-form-card">
         <h3 className="mb-4">Chỉnh Sửa Hồ Sơ Đội Bóng</h3>
         <form onSubmit={handleSubmit} noValidate>
@@ -385,10 +425,11 @@ const EditTeam = () => {
               <thead>
                 <tr>
                   <th style={{ width: "5%" }}>#</th>
-                  <th>Cầu Thủ</th>
-                  <th>Ngày Sinh</th>
-                  <th>Loại Cầu Thủ</th>
-                  <th>Ghi Chú</th>
+                  <th style={{ width: "10%" }}>Mã Cầu Thủ</th>
+                  <th style={{ width: "25%" }}>Cầu Thủ</th>
+                  <th style={{ width: "12%" }}>Ngày Sinh</th>
+                  <th style={{ width: "15%" }}>Loại Cầu Thủ</th>
+                  <th style={{ width: "23%" }}>Ghi Chú</th>
                   <th style={{ width: "5%" }}></th>
                 </tr>
               </thead>
@@ -396,6 +437,18 @@ const EditTeam = () => {
                 {players.map((player, index) => (
                   <tr key={player.id || index}>
                     <td className="text-center">{index + 1}</td>
+                    <td>
+                      <input
+                        type="text"
+                        name="playerCode"
+                        className={`form-control ${
+                          errors.players?.[index]?.playerCode ? "is-invalid" : ""
+                        }`}
+                        value={player.playerCode || ""}
+                        onChange={(e) => handlePlayerChange(index, e)}
+                        placeholder="VD: P001"
+                      />
+                    </td>
                     <td>
                       <input
                         type="text"
@@ -452,7 +505,7 @@ const EditTeam = () => {
                   </tr>
                 ))}
                 <tr>
-                  <td style={{ padding: 0 }} colSpan="6">
+                  <td style={{ padding: 0 }} colSpan="7">
                     <div ref={endOfPlayersRef} />
                   </td>
                 </tr>

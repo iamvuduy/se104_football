@@ -30,17 +30,25 @@ const TeamLeaderboard = () => {
     // Fetch available rounds
     const fetchRounds = async () => {
       try {
-        const response = await fetch("/api/schedules", {
+        const response = await fetch("/api/leaderboard/rounds", {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (response.ok) {
-          const data = await response.json();
-          const schedules = data.data || [];
-          const uniqueRounds = [...new Set(schedules.map(s => s.round))].filter(Boolean).sort();
-          setRounds(uniqueRounds);
+          const roundsData = await response.json();
+          // Get the maximum round that has results
+          const maxRound = roundsData.length > 0 
+            ? Math.max(...roundsData.map(r => r.round)) 
+            : 0;
+          
+          // Create array from 1 to maxRound (e.g., if max is 5: [1,2,3,4,5])
+          const allRounds = maxRound > 0 
+            ? Array.from({ length: maxRound }, (_, i) => i + 1)
+            : [];
+          
+          setRounds(allRounds);
         }
       } catch (err) {
-        console.error("Failed to fetch  rounds:", err);
+        console.error("Failed to fetch rounds:", err);
       }
     };
 

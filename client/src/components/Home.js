@@ -10,7 +10,7 @@ const Home = () => {
     "manage_settings",
     "record_match_results",
   ].some((feature) => canAccessFeature(feature));
-  const [overview, setOverview] = useState({ teams: 0, matches: 0 });
+  const [overview, setOverview] = useState({ teams: 0, matches: 0, players: 0, goals: 0 });
   const [topTeams, setTopTeams] = useState([]);
   const [recentMatches, setRecentMatches] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,11 +30,12 @@ const Home = () => {
         const request = (url) =>
           fetch(url, { headers: baseHeaders, signal: controller.signal });
 
-        const [teamsRes, resultsRes, leaderboardRes] =
+        const [teamsRes, resultsRes, leaderboardRes, playersRes] =
           await Promise.all([
             request("/api/teams"),
             request("/api/results"),
             request("/api/leaderboard/teams"),
+            request("/api/players"),
           ]);
 
         if (
@@ -48,6 +49,7 @@ const Home = () => {
         const teamsData = await teamsRes.json();
         const resultsData = await resultsRes.json();
         const leaderboardData = await leaderboardRes.json();
+        const playersData = playersRes.ok ? await playersRes.json() : { data: [] };
 
         if (!isMounted) {
           return;
@@ -56,10 +58,16 @@ const Home = () => {
         const teams = teamsData?.data ?? [];
         const matches = resultsData?.data ?? [];
         const leaderboard = leaderboardData?.leaderboard ?? [];
+        const players = playersData?.data ?? [];
+        
+        // Calculate total goals from player stats
+        const totalGoals = players.reduce((sum, p) => sum + (p.totalGoals || 0), 0);
 
         setOverview({
           teams: teams.length,
           matches: matches.length,
+          players: players.length,
+          goals: totalGoals,
         });
         setTopTeams(leaderboard.slice(0, 3));
         setRecentMatches(matches.slice(0, 4));
@@ -189,90 +197,89 @@ const Home = () => {
       )}
 
       <header className="home-hero">
-        <div className="home-hero-text">
-          <span className="home-hero-badge">
-            {canManageTournament
-              ? "Bảng điều khiển quản trị"
-              : "Bảng điều khiển giải đấu"}
-          </span>
-          <h1>
-            Chào mừng trở lại{user?.username ? `, ${user.username}` : "!"}
-          </h1>
-          <p>
-            Theo dõi tiến độ giải đấu, cập nhật nhanh các kết quả và truy cập
-            các chức năng quan trọng chỉ với một cú nhấp chuột.
-          </p>
-          <div className="home-hero-actions">
-
-            {canAccessFeature("view_teams") && (
-              <Link
-                to="/teams"
-                className={`home-hero-button ${
-                  canManageTournament ? "is-ghost" : "is-primary"
-                }`}
-              >
-                Xem danh sách đội
-              </Link>
-            )}
-            {canAccessFeature("view_leaderboards") && !canManageTournament && (
-              <Link
-                to="/team-leaderboard"
-                className="home-hero-button is-ghost"
-              >
-                Xem bảng xếp hạng
-              </Link>
-            )}
+        <div className="home-hero-content">
+          <div className="home-hero-text">
+            <span className="home-hero-badge">
+              {canManageTournament
+                ? "Bảng điều khiển quản trị"
+                : "Bảng điều khiển giải đấu"}
+            </span>
+            <h1>
+              Chào mừng trở lại{user?.username ? `, ${user.username}` : "!"}
+            </h1>
+            <p>
+              Theo dõi tiến độ giải đấu, cập nhật nhanh các kết quả và truy cập
+              các chức năng quan trọng chỉ với một cú nhấp chuột.
+            </p>
+            <div className="home-hero-actions">
+              {canAccessFeature("view_teams") && (
+                <Link
+                  to="/teams"
+                  className={`home-hero-button ${
+                    canManageTournament ? "is-ghost" : "is-primary"
+                  }`}
+                >
+                  Xem danh sách đội
+                </Link>
+              )}
+              {canAccessFeature("view_leaderboards") && !canManageTournament && (
+                <Link
+                  to="/team-leaderboard"
+                  className="home-hero-button is-ghost"
+                >
+                  Xem bảng xếp hạng
+                </Link>
+              )}
+              <button type="button" className="home-hero-button is-ghost" onClick={handleReload}>
+                <i className="bi bi-arrow-repeat" /> Tải lại dữ liệu
+              </button>
+            </div>
           </div>
         </div>
-        <div className="home-hero-metrics">
-          <div className="hero-metric-card">
-            <span className="hero-metric-label">Đội tham gia</span>
-            <strong className="hero-metric-value">{overview.teams}</strong>
+
+        {/* Stats Grid Inside Hero */}
+        <div className="home-hero-stats">
+          <div className="hero-stat-card">
+            <div className="hero-stat-icon is-blue">
+              <i className="bi bi-people-fill" />
+            </div>
+            <div className="hero-stat-info">
+              <span className="hero-stat-label">Đội bóng</span>
+              <strong className="hero-stat-value">{overview.teams}</strong>
+            </div>
           </div>
 
-          <div className="hero-metric-card">
-            <span className="hero-metric-label">Trận đã hoàn tất</span>
-            <strong className="hero-metric-value">{overview.matches}</strong>
+          <div className="hero-stat-card">
+            <div className="hero-stat-icon is-purple">
+              <i className="bi bi-person-fill" />
+            </div>
+            <div className="hero-stat-info">
+              <span className="hero-stat-label">Cầu thủ</span>
+              <strong className="hero-stat-value">{overview.players}</strong>
+            </div>
+          </div>
+
+          <div className="hero-stat-card">
+            <div className="hero-stat-icon is-green">
+              <i className="bi bi-flag-fill" />
+            </div>
+            <div className="hero-stat-info">
+              <span className="hero-stat-label">Trận đấu</span>
+              <strong className="hero-stat-value">{overview.matches}</strong>
+            </div>
+          </div>
+
+          <div className="hero-stat-card">
+            <div className="hero-stat-icon is-orange">
+              <i className="bi bi-bullseye" />
+            </div>
+            <div className="hero-stat-info">
+              <span className="hero-stat-label">Bàn thắng</span>
+              <strong className="hero-stat-value">{overview.goals}</strong>
+            </div>
           </div>
         </div>
       </header>
-
-      <section className="home-overview">
-        <div className="home-section-head">
-          <h2>Tổng quan nhanh</h2>
-          <button type="button" className="home-reload" onClick={handleReload}>
-            <i className="bi bi-arrow-repeat" /> Tải lại dữ liệu
-          </button>
-        </div>
-
-        <div className="overview-grid">
-          <article className="overview-card">
-            <div className="overview-icon is-blue">
-              <i className="bi bi-people-fill" />
-            </div>
-            <div className="overview-body">
-              <span className="overview-label">Đội bóng</span>
-              <strong className="overview-value">{overview.teams}</strong>
-              <p className="overview-note">
-                Theo dõi thông tin, cầu thủ và trạng thái đăng ký.
-              </p>
-            </div>
-          </article>
-
-          <article className="overview-card">
-            <div className="overview-icon is-green">
-              <i className="bi bi-flag-fill" />
-            </div>
-            <div className="overview-body">
-              <span className="overview-label">Trận đấu đã ghi nhận</span>
-              <strong className="overview-value">{overview.matches}</strong>
-              <p className="overview-note">
-                Xem lại tỉ số, sân đấu và lịch sử đối đầu.
-              </p>
-            </div>
-          </article>
-        </div>
-      </section>
 
       <section className="home-actions">
         <div className="home-section-head">

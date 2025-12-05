@@ -518,3 +518,64 @@
   font-weight: bold;
   font-size: 1.1em;
 }
+
+/* Goal Types Editor Styles */
+.goal-types-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.goal-type-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.goal-type-item input {
+  flex: 1;
+}
+
+.btn-remove {
+  padding: 0.5rem 0.75rem;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+}
+
+.btn-remove:hover:not(:disabled) {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+.btn-remove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #fca5a5;
+}
+
+.btn-add {
+  margin-top: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.btn-add:hover {
+  background: #059669;
+  transform: translateY(-1px);
+}

@@ -225,9 +225,25 @@ const TeamRegistration = () => {
     const playerErrors = [];
     let hasAgeError = false;
     let hasDobError = false;
+    let hasPlayerCodeError = false;
+    const playerCodeSet = new Set();
+    let hasDuplicatePlayerCode = false;
 
     players.forEach((player, index) => {
       const playerError = {};
+      
+      // Validate player code
+      const code = (player.playerCode || "").trim();
+      if (!code) {
+        playerError.playerCode = true;
+        hasPlayerCodeError = true;
+      } else if (playerCodeSet.has(code)) {
+        playerError.playerCode = true;
+        hasDuplicatePlayerCode = true;
+      } else {
+        playerCodeSet.add(code);
+      }
+      
       if (!player.name.trim()) playerError.name = true;
       if (!player.dob) playerError.dob = true;
 
@@ -263,6 +279,14 @@ const TeamRegistration = () => {
     }
     if (playerErrors.length > 0 && !hasDobError) {
       warningMessages.push("Tên cầu thủ không được để trống.");
+    }
+
+    if (hasPlayerCodeError) {
+      warningMessages.push("Mã cầu thủ không được để trống.");
+    }
+
+    if (hasDuplicatePlayerCode) {
+      warningMessages.push("Mã cầu thủ bị trùng lặp.");
     }
 
     if (playerErrors.length > 0) {
@@ -417,7 +441,9 @@ const TeamRegistration = () => {
                           <input
                             type="text"
                             name="playerCode"
-                            className="form-control"
+                            className={`form-control ${
+                              errors.players?.[index]?.playerCode ? "is-invalid" : ""
+                            }`}
                             value={player.playerCode}
                             onChange={(e) => handlePlayerChange(index, e)}
                             placeholder="VD: P001"

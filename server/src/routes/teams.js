@@ -67,7 +67,7 @@ router.get("/:id", (req, res) => {
 
       // Fetch players for the team
       db.all(
-        "SELECT id, name, dob, type, notes FROM players WHERE team_id = ? ORDER BY id",
+        "SELECT id, name, dob, type, notes, player_code FROM players WHERE team_id = ? ORDER BY id",
         [teamId],
         (err, players) => {
           if (err) {
@@ -231,6 +231,9 @@ router.post("/", async (req, res) => {
             for (const player of players) {
               await new Promise((resolve, reject) => {
                 const { name, dob, type, notes, playerCode } = player;
+                console.log("=== DEBUG POST TEAM: Player data ===");
+                console.log("player object:", player);
+                console.log("playerCode extracted:", playerCode);
                 
                 // Check for unique player code in DB
                 db.get("SELECT id FROM players WHERE player_code = ?", [playerCode], (err, row) => {
@@ -295,6 +298,14 @@ router.put("/:id", async (req, res) => {
   const teamId = req.params.id;
   const { teamCode, teamName, homeStadium, players } = req.body;
 
+  console.log("=== PUT /api/teams/:id DEBUG ===");
+  console.log("Team ID:", teamId);
+  console.log("teamCode:", teamCode, "type:", typeof teamCode);
+  console.log("teamName:", teamName, "type:", typeof teamName);
+  console.log("homeStadium:", homeStadium, "type:", typeof homeStadium);
+  console.log("players:", Array.isArray(players) ? `Array(${players.length})` : typeof players);
+  console.log("Full body:", JSON.stringify(req.body, null, 2));
+
   if (
     teamCode === undefined ||
     typeof teamName !== "string" ||
@@ -302,6 +313,12 @@ router.put("/:id", async (req, res) => {
     !Array.isArray(players) ||
     players.length === 0
   ) {
+    console.log("❌ Validation failed:");
+    console.log("  teamCode === undefined?", teamCode === undefined);
+    console.log("  typeof teamName !== 'string'?", typeof teamName !== "string");
+    console.log("  typeof homeStadium !== 'string'?", typeof homeStadium !== "string");
+    console.log("  !Array.isArray(players)?", !Array.isArray(players));
+    console.log("  players.length === 0?", Array.isArray(players) && players.length === 0);
     return res.status(400).json({ error: "Invalid data provided." });
   }
 
@@ -351,61 +368,75 @@ router.put("/:id", async (req, res) => {
         return res.status(500).json({ error: "Could not update team." });
       }
 
-      const deletePlayersSql = `DELETE FROM players WHERE team_id = ?`;
-      db.run(deletePlayersSql, [teamId], (err) => {
-        if (err) {
-          console.error("Error deleting old players:", err.message);
-          return res
-            .status(500)
-            .json({ error: "Could not update team players." });
-        }
-
-        const insertPlayerSql = `INSERT INTO players (team_id, name, dob, type, notes) VALUES (?, ?, ?, ?, ?)`;
-        (async () => {
-          try {
-            for (const player of players) {
-              await new Promise((resolve, reject) => {
-                const { name, dob, type, notes, playerCode } = player;
-
-                // Check for unique player code in DB (excluding current player if we were updating, but here we delete and re-insert so just check global uniqueness)
-                // However, since we deleted all players for this team, we only need to check against OTHER teams.
-                // But wait, we already deleted players for THIS team. So global check is fine.
-                
-                db.get("SELECT id FROM players WHERE player_code = ?", [playerCode], (err, row) => {
-                    if (err) {
-                        reject(err);
-                        return;
-                    }
-                    if (row) {
-                        reject(new Error(`Mã cầu thủ '${playerCode}' đã tồn tại trong hệ thống.`));
-                        return;
-                    }
-
-                    db.run(
-                      `INSERT INTO players (team_id, name, dob, type, notes, player_code) VALUES (?, ?, ?, ?, ?, ?)`,
-                      [teamId, name, dob, type, notes, playerCode],
-                      (err) => {
-                        if (err) {
-                          console.error("Error inserting player:", err.message);
-                          reject(err);
-                        } else {
-                          resolve();
-                        }
-                      }
-                    );
-                });
+      // First, validate that new player codes don't conflict with OTHER teams
+      // (excluding the current team's players since we'll delete them)
+      (async () => {
+        try {
+          // Check each player code against other teams
+          for (const player of players) {
+            const { playerCode } = player;
+            const existingPlayer = await new Promise((resolve, reject) => {
+              db.get(
+                "SELECT id, team_id FROM players WHERE player_code = ? AND team_id != ?",
+                [playerCode, teamId],
+                (err, row) => {
+                  if (err) reject(err);
+                  else resolve(row);
+                }
+              );
+            });
+            
+            if (existingPlayer) {
+              return res.status(400).json({ 
+                error: `Mã cầu thủ '${playerCode}' đã tồn tại trong đội khác.` 
               });
             }
-            res
-              .status(200)
-              .json({ message: "Team updated successfully!", teamId: teamId });
-          } catch (err) {
-            res
-              .status(500)
-              .json({ error: err.message || "An error occurred while updating players." });
           }
-        })();
-      });
+
+          // Now safe to delete old players and insert new ones
+          const deletePlayersSql = `DELETE FROM players WHERE team_id = ?`;
+          db.run(deletePlayersSql, [teamId], async (err) => {
+            if (err) {
+              console.error("Error deleting old players:", err.message);
+              return res
+                .status(500)
+                .json({ error: "Could not update team players." });
+            }
+
+            // Insert new players without redundant uniqueness checks
+            try {
+              for (const player of players) {
+                await new Promise((resolve, reject) => {
+                  const { name, dob, type, notes, playerCode } = player;
+                  
+                  db.run(
+                    `INSERT INTO players (team_id, name, dob, type, notes, player_code) VALUES (?, ?, ?, ?, ?, ?)`,
+                    [teamId, name, dob, type, notes, playerCode],
+                    (err) => {
+                      if (err) {
+                        console.error("Error inserting player:", err.message);
+                        reject(err);
+                      } else {
+                        resolve();
+                      }
+                    }
+                  );
+                });
+              }
+              res
+                .status(200)
+                .json({ message: "Team updated successfully!", teamId: teamId });
+            } catch (err) {
+              res
+                .status(500)
+                .json({ error: err.message || "An error occurred while updating players." });
+            }
+          });
+        } catch (err) {
+          console.error("Error validating player codes:", err.message);
+          return res.status(500).json({ error: "Could not validate player codes." });
+        }
+      })();
     }
   );
 });

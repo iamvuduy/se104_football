@@ -3,7 +3,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(90deg, #5b4cdb 0%, #4a7fe8 50%, #3ba8f5 100%);
+  background: #4b7fd1;
   padding: 0.875rem 2.5rem;
   box-shadow: 0 4px 20px rgba(91, 76, 219, 0.3);
   position: sticky;

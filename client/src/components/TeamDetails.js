@@ -142,7 +142,8 @@ const TeamDetails = () => {
           <table className="details-table">
             <thead>
               <tr>
-                <th>#</th>
+                <th>STT</th>
+                <th>Mã Cầu Thủ</th>
                 <th>Tên Cầu Thủ</th>
                 <th>Ngày Sinh</th>
                 <th>Loại</th>
@@ -153,6 +154,7 @@ const TeamDetails = () => {
               {players.map((player, index) => (
                 <tr key={player.id}>
                   <td>{index + 1}</td>
+                  <td>{player.player_code || "-"}</td>
                   <td>{player.name}</td>
                   <td>{new Date(player.dob).toLocaleDateString("vi-VN")}</td>
                   <td>{player.type}</td>

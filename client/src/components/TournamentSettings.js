@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { FaEdit, FaUndo } from "react-icons/fa";
 import "./TournamentSettings.css";
 
 const RANKING_LABELS = {
@@ -62,6 +63,13 @@ const TournamentSettings = () => {
       category: "Quy định bàn thắng"
     },
     {
+      key: "goal_types",
+      label: "Loại bàn thắng",
+      type: "goal_types",
+      note: "Danh sách các loại bàn thắng được phép",
+      category: "Quy định bàn thắng"
+    },
+    {
       key: "points_system",
       label: "Hệ thống điểm số",
       type: "points",
@@ -118,6 +126,14 @@ const TournamentSettings = () => {
         type: config.type,
         note: config.note,
       });
+    } else if (config.type === "goal_types") {
+      setEditModal({
+        key: config.key,
+        label: config.label,
+        value: [...settings[config.key]], // Copy array
+        type: config.type,
+        note: config.note,
+      });
     } else {
       // For single settings
       setEditModal({
@@ -144,6 +160,19 @@ const TournamentSettings = () => {
         editModal.fields.forEach((field, index) => {
           updatedSettings[field] = Number(editModal.values[index]);
         });
+      } else if (editModal.type === "goal_types") {
+        // Clean and validate goal types
+        const cleanedTypes = editModal.value
+          .map(type => String(type).trim())
+          .filter(type => type.length > 0);
+        
+        if (cleanedTypes.length === 0) {
+          setError("Phải có ít nhất một loại bàn thắng");
+          setSaving(false);
+          return;
+        }
+        
+        updatedSettings[editModal.key] = cleanedTypes;
       } else {
         // Update single field
         updatedSettings[editModal.key] = editModal.type === "number" ? Number(editModal.value) : editModal.value;
@@ -210,6 +239,12 @@ const TournamentSettings = () => {
       const value = settings[config.key];
       if (Array.isArray(value)) {
         return value.map(k => RANKING_LABELS[k] || k).join(" > ");
+      }
+    }
+    if (config.type === "goal_types") {
+      const value = settings[config.key];
+      if (Array.isArray(value)) {
+        return value.join(", ");
       }
     }
     const value = settings[config.key];
@@ -344,7 +379,7 @@ const TournamentSettings = () => {
                       onClick={() => handleEdit(config)}
                       disabled={saving}
                     >
-                      ✏️ Sửa
+                      <FaEdit /> Sửa
                     </button>
                   </td>
                 </tr>
@@ -359,7 +394,7 @@ const TournamentSettings = () => {
             onClick={handleReset}
             disabled={saving}
           >
-            🔄 Đặt lại mặc định
+            <FaUndo /> Đặt lại mặc định
           </button>
         </div>
       </div>
@@ -518,6 +553,54 @@ const TournamentSettings = () => {
                         ))}
                     </div>
                   </div>
+                  <div className="modal-hint">{editModal.note}</div>
+                </div>
+              ) : editModal.type === "goal_types" ? (
+                <div className="goal-types-editor">
+                  <label className="modal-label">Danh sách loại bàn thắng:</label>
+                  {editModal.value.map((type, index) => (
+                    <div key={index} className="goal-type-item">
+                      <input
+                        type="text"
+                        className="modal-input"
+                        value={type}
+                        onChange={(e) => {
+                          const newTypes = [...editModal.value];
+                          newTypes[index] = e.target.value;
+                          setEditModal({ ...editModal, value: newTypes });
+                        }}
+                        placeholder="Nhập loại bàn thắng"
+                      />
+                      <button
+                        type="button"
+                        className="btn-remove"
+                        onClick={() => {
+                          if (editModal.value.length > 1) {
+                            setEditModal({
+                              ...editModal,
+                              value: editModal.value.filter((_, i) => i !== index)
+                            });
+                          }
+                        }}
+                        disabled={editModal.value.length === 1}
+                        title="Xóa loại này"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="btn-add"
+                    onClick={() => {
+                      setEditModal({
+                        ...editModal,
+                        value: [...editModal.value, ""]
+                      });
+                    }}
+                  >
+                    ➕ Thêm loại bàn thắng
+                  </button>
                   <div className="modal-hint">{editModal.note}</div>
                 </div>
               ) : (

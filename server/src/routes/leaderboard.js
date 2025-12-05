@@ -43,16 +43,18 @@ router.get("/teams", async (req, res) => {
       }
 
       if (round) {
-        // Join with schedules to get round info
-        sql = `
-          SELECT mr.* 
-          FROM match_results mr
-          LEFT JOIN schedules s ON (
-            (mr.team1_id = s.team1_id AND mr.team2_id = s.team2_id) OR
-            (mr.team1_id = s.team2_id AND mr.team2_id = s.team1_id)
+        // Filter by round using EXISTS to avoid duplicates
+        conditions.push(`
+          EXISTS (
+            SELECT 1 FROM schedules s
+            WHERE (
+              (mr.team1_id = s.team1_id AND mr.team2_id = s.team2_id) OR
+              (mr.team1_id = s.team2_id AND mr.team2_id = s.team1_id)
+            )
+            AND CAST(s.round AS INTEGER) > 0
+            AND CAST(s.round AS INTEGER) <= ?
           )
-        `;
-        conditions.push("s.round = ?");
+        `);
         params.push(round);
       }
 
@@ -60,9 +62,20 @@ router.get("/teams", async (req, res) => {
         sql += " WHERE " + conditions.join(" AND ");
       }
 
+      console.log("=== LEADERBOARD DEBUG ===");
+      console.log("Round parameter:", round);
+      console.log("SQL Query:", sql);
+      console.log("Params:", params);
+
       db.all(sql, params, (err, rows) => {
         if (err) reject(err);
-        else resolve(rows);
+        else {
+          console.log("Query returned", rows.length, "matches");
+          rows.forEach(r => {
+            console.log(`  Match ${r.id}: team ${r.team1_id} vs ${r.team2_id} - ${r.score}`);
+          });
+          resolve(rows);
+        }
       });
     });
 
@@ -248,6 +261,28 @@ router.get("/teams", async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: "Failed to generate leaderboard." });
   }
+});
+
+// GET /api/leaderboard/rounds - Get list of rounds that have match results
+router.get("/rounds", (req, res) => {
+  const sql = `
+    SELECT DISTINCT CAST(s.round AS INTEGER) as round
+    FROM schedules s
+    INNER JOIN match_results mr ON (
+      (s.team1_id = mr.team1_id AND s.team2_id = mr.team2_id) OR
+      (s.team1_id = mr.team2_id AND s.team2_id = mr.team1_id)
+    )
+    WHERE CAST(s.round AS INTEGER) > 0
+    ORDER BY round ASC
+  `;
+  
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      console.error("Error fetching rounds with results:", err.message);
+      return res.status(500).json({ error: "Failed to fetch rounds." });
+    }
+    res.json(rows);
+  });
 });
 
 // GET /api/leaderboard/top-scorers - Get top scorer leaderboard

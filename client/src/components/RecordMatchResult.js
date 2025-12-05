@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import "./RecordMatchResult.css";
 import { FaEdit, FaTrash, FaTimes } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
@@ -26,6 +26,20 @@ const RecordMatchResult = () => {
   const [settings, setSettings] = useState(null);
   const [recordedMatches, setRecordedMatches] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+
+  // Filter out schedules that already have results
+  const availableSchedules = useMemo(() => {
+    if (!schedules || schedules.length === 0) return [];
+    if (!recordedMatches || recordedMatches.length === 0) return schedules;
+    
+    // Get list of match_codes that already have results
+    const recordedMatchCodes = new Set(
+      recordedMatches.map(r => r.match_code).filter(Boolean)
+    );
+    
+    // Filter out schedules that already have results
+    return schedules.filter(s => !recordedMatchCodes.has(s.match_code));
+  }, [schedules, recordedMatches]);
 
   useEffect(() => {
     if (!token || !canRecordResults) {
@@ -311,7 +325,7 @@ const RecordMatchResult = () => {
           <MatchForm
             key={toast} // Hack to reset form on success (toast changes)
             teams={teams}
-            schedules={schedules}
+            schedules={availableSchedules}
             settings={settings}
             onSubmit={handleCreate}
             token={token}
@@ -398,7 +412,7 @@ const RecordMatchResult = () => {
             <MatchForm
               initialData={editData}
               teams={teams}
-              schedules={schedules}
+              schedules={availableSchedules}
               settings={settings}
               onSubmit={handleUpdate}
               onCancel={handleCloseEditModal}
