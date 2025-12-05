@@ -7,11 +7,10 @@ const Home = () => {
   const { user, token, canAccessFeature } = useAuth();
   const canManageTournament = [
     "manage_schedules",
-    "manage_groups",
     "manage_settings",
     "record_match_results",
   ].some((feature) => canAccessFeature(feature));
-  const [overview, setOverview] = useState({ groups: 0, teams: 0, matches: 0 });
+  const [overview, setOverview] = useState({ teams: 0, matches: 0 });
   const [topTeams, setTopTeams] = useState([]);
   const [recentMatches, setRecentMatches] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,17 +30,15 @@ const Home = () => {
         const request = (url) =>
           fetch(url, { headers: baseHeaders, signal: controller.signal });
 
-        const [teamsRes, groupsRes, resultsRes, leaderboardRes] =
+        const [teamsRes, resultsRes, leaderboardRes] =
           await Promise.all([
             request("/api/teams"),
-            request("/api/groups"),
             request("/api/results"),
             request("/api/leaderboard/teams"),
           ]);
 
         if (
           !teamsRes.ok ||
-          !groupsRes.ok ||
           !resultsRes.ok ||
           !leaderboardRes.ok
         ) {
@@ -49,7 +46,6 @@ const Home = () => {
         }
 
         const teamsData = await teamsRes.json();
-        const groupsData = await groupsRes.json();
         const resultsData = await resultsRes.json();
         const leaderboardData = await leaderboardRes.json();
 
@@ -58,14 +54,10 @@ const Home = () => {
         }
 
         const teams = teamsData?.data ?? [];
-        const groups = groupsData?.groups ?? [];
         const matches = resultsData?.data ?? [];
-        const leaderboard = Array.isArray(leaderboardData)
-          ? leaderboardData
-          : [];
+        const leaderboard = leaderboardData?.leaderboard ?? [];
 
         setOverview({
-          groups: groups.length,
           teams: teams.length,
           matches: matches.length,
         });
@@ -211,14 +203,7 @@ const Home = () => {
             các chức năng quan trọng chỉ với một cú nhấp chuột.
           </p>
           <div className="home-hero-actions">
-            {canAccessFeature("manage_groups") && (
-              <Link
-                to="/admin/group-management"
-                className="home-hero-button is-primary"
-              >
-                Quản lý bảng đấu
-              </Link>
-            )}
+
             {canAccessFeature("view_teams") && (
               <Link
                 to="/teams"
@@ -244,10 +229,7 @@ const Home = () => {
             <span className="hero-metric-label">Đội tham gia</span>
             <strong className="hero-metric-value">{overview.teams}</strong>
           </div>
-          <div className="hero-metric-card">
-            <span className="hero-metric-label">Bảng đấu</span>
-            <strong className="hero-metric-value">{overview.groups}</strong>
-          </div>
+
           <div className="hero-metric-card">
             <span className="hero-metric-label">Trận đã hoàn tất</span>
             <strong className="hero-metric-value">{overview.matches}</strong>
@@ -276,18 +258,7 @@ const Home = () => {
               </p>
             </div>
           </article>
-          <article className="overview-card">
-            <div className="overview-icon is-purple">
-              <i className="bi bi-grid-3x3-gap-fill" />
-            </div>
-            <div className="overview-body">
-              <span className="overview-label">Bảng đấu</span>
-              <strong className="overview-value">{overview.groups}</strong>
-              <p className="overview-note">
-                Sắp xếp đội hợp lý để đảm bảo giải diễn ra cân bằng.
-              </p>
-            </div>
-          </article>
+
           <article className="overview-card">
             <div className="overview-icon is-green">
               <i className="bi bi-flag-fill" />

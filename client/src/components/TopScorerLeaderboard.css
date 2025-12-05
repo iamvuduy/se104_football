@@ -1,10 +1,53 @@
-/* Top Scorer Leaderboard - refreshed UI */
+/* Top Scorer Leaderboard - Compact Design */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 
 .top-scorer-page {
   min-height: 100vh;
-  padding: 2.5rem 1.5rem 4rem;
-  background: radial-gradient(circle at top, #eef3ff, #f6f8fb 55%, #edf1f7);
-  color: #0f172a;
+  padding: 1.5rem 1rem;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
 }
 
 .top-scorer-page.is-loading,
@@ -22,200 +65,362 @@
 .top-scorer-page.is-empty p,
 .top-scorer-page.is-error p {
   max-width: 420px;
-  color: #475569;
+  color: #7f8c9a;
+  font-weight: 500;
 }
 
 .ts-spinner {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  border: 4px solid rgba(59, 130, 246, 0.2);
-  border-top-color: #2563eb;
-  animation: ts-spin 0.9s linear infinite;
-}
-
-@keyframes ts-spin {
-  to {
-    transform: rotate(360deg);
-  }
+  border: 3px solid #e1e8ed;
+  border-top-color: #4a90e2;
+  animation: spin 1s linear infinite;
 }
 
 .ts-container {
-  max-width: 1160px;
+  max-width: 1400px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
+  gap: 1.25rem;
 }
 
 .ts-hero {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  gap: 1.75rem;
-  padding: 2.5rem;
-  border-radius: 24px;
-  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-  color: #f8fafc;
-  box-shadow: 0 22px 45px -18px rgba(37, 99, 235, 0.45);
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+  color: white;
+  box-shadow: 0 4px 20px rgba(74, 144, 226, 0.3);
+  position: relative;
+  overflow: hidden;
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.ts-hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  animation: shimmer 3s infinite;
+}
+
+.ts-hero > div:first-child {
+  position: relative;
+  z-index: 1;
 }
 
 .ts-hero h1 {
-  margin: 0.5rem 0;
-  font-size: 2.5rem;
+  margin: 0.25rem 0;
+  font-size: 1.5rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
+  animation: slideIn 0.6s ease-out 0.2s both;
 }
 
 .ts-hero p {
   margin: 0;
-  max-width: 480px;
-  line-height: 1.6;
-  color: rgba(248, 250, 252, 0.88);
+  max-width: 520px;
+  line-height: 1.5;
+  opacity: 0.95;
+  font-size: 0.9rem;
+  animation: slideIn 0.6s ease-out 0.3s both;
 }
 
 .ts-hero-badge {
   display: inline-block;
-  padding: 0.35rem 0.9rem;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.18);
-  font-size: 0.8rem;
-  letter-spacing: 0.16em;
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 1px;
   text-transform: uppercase;
+  animation: slideIn 0.6s ease-out 0.1s both;
 }
 
 .ts-meta {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
   align-items: center;
+  position: relative;
+  z-index: 1;
 }
 
 .ts-meta article {
-  background: rgba(15, 23, 42, 0.22);
-  border-radius: 18px;
-  padding: 1.4rem 1.6rem;
-  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 0.65rem 0.875rem;
+  transition: all 0.3s ease;
+}
+
+.ts-meta article:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .ts-meta span {
   display: block;
-  font-size: 0.75rem;
-  letter-spacing: 0.1em;
+  font-size: 0.65rem;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
-  color: rgba(248, 250, 252, 0.75);
+  opacity: 0.9;
+  font-weight: 600;
 }
 
 .ts-meta strong {
   display: block;
-  font-size: 2rem;
-  margin-top: 0.35rem;
+  font-size: 1.25rem;
+  margin-top: 0.25rem;
+  font-weight: 800;
 }
 
 .ts-table-section {
   background: #ffffff;
-  border-radius: 26px;
-  padding: 2.25rem;
-  box-shadow: 0 25px 45px -32px rgba(15, 23, 42, 0.4);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
+  gap: 1rem;
+}
+
+.ts-table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
 }
 
 .ts-table-header h3 {
   margin: 0;
-  font-size: 1.45rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1a2332;
 }
 
 .ts-table-header p {
-  margin: 0.35rem 0 0;
-  color: #475569;
+  margin: 0.375rem 0 0;
+  color: #7f8c9a;
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+/* Filter Buttons */
+.ts-filter-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.ts-filter-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  border: 2px solid #e1e8ed;
+  background: white;
+  color: #7f8c9a;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.ts-filter-btn:hover {
+  border-color: #4a90e2;
+  color: #4a90e2;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(74, 144, 226, 0.15);
+}
+
+.ts-filter-btn.active {
+  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+  border-color: #4a90e2;
+  color: white;
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
+}
+
+.ts-filter-btn.active:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(74, 144, 226, 0.4);
 }
 
 .ts-table-wrapper {
   overflow-x: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
 .ts-table {
   width: 100%;
   border-collapse: collapse;
   min-width: 620px;
+  background: #ffffff;
 }
 
 .ts-table thead {
-  background: linear-gradient(
-    90deg,
-    rgba(37, 99, 235, 0.08),
-    rgba(124, 58, 237, 0.08)
-  );
+  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
 }
 
 .ts-table th,
 .ts-table td {
-  padding: 1.1rem 1.25rem;
+  padding: 0.5rem 0.4rem;
   text-align: left;
 }
 
 .ts-table th {
-  font-size: 0.78rem;
-  letter-spacing: 0.12em;
+  font-size: 0.7rem;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
-  color: #0f172a;
+  color: white;
+  font-weight: 600;
 }
 
 .ts-table tbody tr {
-  border-bottom: 1px solid #e2e8f0;
-  transition: transform 0.2s ease, background 0.2s ease;
+  border-bottom: 1px solid #e1e8ed;
+  transition: all 0.3s ease;
+  animation: slideIn 0.4s ease-out both;
+}
+
+.ts-table tbody tr:nth-child(1) { animation-delay: 0.5s; }
+.ts-table tbody tr:nth-child(2) { animation-delay: 0.55s; }
+.ts-table tbody tr:nth-child(3) { animation-delay: 0.6s; }
+.ts-table tbody tr:nth-child(4) { animation-delay: 0.65s; }
+.ts-table tbody tr:nth-child(5) { animation-delay: 0.7s; }
+.ts-table tbody tr:nth-child(n+6) { animation-delay: 0.75s; }
+
+.ts-table tbody tr:last-child {
+  border-bottom: none;
 }
 
 .ts-table tbody tr:hover {
-  background: rgba(37, 99, 235, 0.04);
-  transform: translateY(-2px);
+  background: #f8f9fb;
+  transform: translateX(3px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .ts-row-highlight {
-  background: rgba(37, 99, 235, 0.07);
+  background: linear-gradient(90deg, #fff8e1 0%, #ffffff 100%);
+  border-left: 3px solid #ffd700;
+}
+
+.ts-row-highlight:hover {
+  background: linear-gradient(90deg, #fff3cd 0%, #fffbf0 100%);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.2);
+}
+
+.ts-row-highlight .ts-goal-count {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.ts-table td {
+  color: #1a2332;
+  font-weight: 500;
+  font-size: 0.85rem;
 }
 
 .ts-name {
   font-weight: 600;
-  color: #0f172a;
+  color: #1a2332;
+  font-size: 0.85rem;
 }
 
 .ts-type {
   display: inline-block;
-  padding: 0.35rem 0.75rem;
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.2);
-  font-size: 0.78rem;
-  color: #475569;
+  padding: 0.25rem 0.6rem;
+  border-radius: 20px;
+  background: #e0e7ff;
+  font-size: 0.75rem;
+  color: #4338ca;
+  font-weight: 600;
 }
 
 .ts-goal-count {
   font-weight: 700;
+  font-size: 1rem;
+  color: #27ae60;
+  transition: all 0.3s ease;
+}
+
+.ts-row-highlight .ts-goal-count {
+  color: #ffd700;
   font-size: 1.1rem;
-  color: #2563eb;
+}
+
+.ts-table tbody tr:hover .ts-goal-count {
+  transform: scale(1.1);
 }
 
 .ts-table-footnote {
   font-size: 0.85rem;
-  color: #475569;
+  color: #7f8c9a;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e1e8ed;
 }
 
 @media (max-width: 767px) {
   .top-scorer-page {
-    padding: 1.75rem 1rem 3rem;
+    padding: 1rem 0.5rem;
   }
 
   .ts-hero {
-    padding: 2rem;
+    padding: 1.5rem 1rem;
+    gap: 1rem;
   }
 
   .ts-hero h1 {
-    font-size: 2rem;
+    font-size: 1.5rem;
+  }
+
+  .ts-meta {
+    gap: 0.75rem;
+  }
+
+  .ts-meta article {
+    padding: 1rem;
+  }
+
+  .ts-meta strong {
+    font-size: 1.75rem;
   }
 
   .ts-table-section {
-    padding: 1.75rem;
+    padding: 1rem;
+  }
+
+  .ts-table-header h3 {
+    font-size: 1rem;
+  }
+
+  .ts-table th,
+  .ts-table td {
+    padding: 0.75rem 0.5rem;
+  }
+
+  .ts-name {
+    font-size: 0.85rem;
+  }
+
+  .ts-goal-count {
+    font-size: 0.95rem;
+  }
+
+  .ts-table tbody tr:hover {
+    transform: none;
   }
 }

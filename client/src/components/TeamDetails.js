@@ -4,7 +4,7 @@ import axios from "axios";
 import NotificationModal from "./NotificationModal";
 import { useAuth } from "../context/AuthContext";
 import "./Details.css";
-import { FaShieldAlt, FaUsers, FaEdit, FaTrash } from "react-icons/fa";
+import { FaFutbol, FaUsers, FaEdit, FaTrash } from "react-icons/fa";
 
 const TeamDetails = () => {
   const [team, setTeam] = useState(null);
@@ -18,7 +18,8 @@ const TeamDetails = () => {
     type: "",
     message: "",
   });
-  const { token } = useAuth();
+  const { token, canAccessFeature } = useAuth();
+  const canManageTeams = canAccessFeature("manage_teams");
 
   const handleCloseNotification = () => {
     setNotification({ isOpen: false, type: "", message: "" });
@@ -79,57 +80,66 @@ const TeamDetails = () => {
 
   if (loading)
     return (
-      <div className="registration-container">
+      <div className="details-container">
         <p>Loading...</p>
       </div>
     );
   if (error)
     return (
-      <div className="registration-container">
+      <div className="details-container">
         <p>Error: {error}</p>
       </div>
     );
   if (!team)
     return (
-      <div className="registration-container">
+      <div className="details-container">
         <p>Team not found.</p>
       </div>
     );
 
   return (
-    <div className="registration-container">
+    <div className="details-container">
       <NotificationModal
         isOpen={notification.isOpen}
         type={notification.type}
         message={notification.message}
         onClose={handleCloseNotification}
       />
-      <div className="registration-form-card">
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <h2 className="mb-0">
-            <FaShieldAlt /> {team.name}
-          </h2>
-          <div>
-            <Link to={`/teams/${id}/edit`} className="btn btn-primary me-2">
+      
+      {/* Hero Section */}
+      <div className="team-hero">
+        <div className="team-info">
+          <h1>{team.name}</h1>
+          <div className="team-meta">
+            <div className="team-meta-item">
+              <strong>Mã đội:</strong> {team.team_code}
+            </div>
+            <div className="team-meta-item">
+              <strong>Sân nhà:</strong> {team.home_stadium}
+            </div>
+          </div>
+        </div>
+        {canManageTeams && (
+          <div className="team-actions">
+            <Link to={`/teams/${id}/edit`} className="btn btn-primary">
               <FaEdit /> Sửa
             </Link>
             <button onClick={handleDelete} className="btn btn-danger">
               <FaTrash /> Xóa
             </button>
           </div>
-        </div>
-        <p>
-          <strong>Mã đội:</strong> {team.team_code}
-        </p>
-        <p>
-          <strong>Sân nhà:</strong> {team.home_stadium}
-        </p>
+        )}
+      </div>
 
-        <h3 className="mt-4 mb-3">
-          <FaUsers /> Danh sách cầu thủ
-        </h3>
-        <div className="table-responsive">
-          <table className="table player-table">
+      {/* Content Section */}
+      <div className="details-content">
+        <div className="details-section-header">
+          <FaUsers />
+          <h2>Danh sách cầu thủ</h2>
+        </div>
+
+        <div className="details-table-wrapper">
+          <table className="details-table">
             <thead>
               <tr>
                 <th>#</th>

@@ -1,38 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import "./AdminPanels.css";
+import "./TournamentSettings.css";
 
-const priorityLabels = {
+const RANKING_LABELS = {
   points: "Điểm số",
   goal_difference: "Hiệu số",
   goals_for: "Bàn thắng",
   goals_against: "Bàn thua",
-  away_goals: "Bàn sân khách",
-  head_to_head: "Đối đầu trực tiếp",
-};
-
-const numericFields = [
-  "player_min_age",
-  "player_max_age",
-  "team_min_players",
-  "team_max_players",
-  "foreign_player_limit",
-  "goal_time_limit",
-  "points_win",
-  "points_draw",
-  "points_loss",
-];
-
-const fieldLabels = {
-  player_min_age: "Tuổi tối thiểu",
-  player_max_age: "Tuổi tối đa",
-  team_min_players: "Số cầu thủ tối thiểu",
-  team_max_players: "Số cầu thủ tối đa",
-  foreign_player_limit: "Giới hạn cầu thủ nước ngoài",
-  goal_time_limit: "Thời điểm ghi bàn tối đa",
-  points_win: "Điểm khi thắng",
-  points_draw: "Điểm khi hòa",
-  points_loss: "Điểm khi thua",
+  away_goals: "Tổng bàn thắng sân khách",
+  head_to_head: "Đối đầu",
 };
 
 const TournamentSettings = () => {
@@ -42,9 +18,8 @@ const TournamentSettings = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
-  const [form, setForm] = useState(null);
-  const [goalDraft, setGoalDraft] = useState("");
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [settings, setSettings] = useState(null);
+  const [editModal, setEditModal] = useState(null); // { key, label, value, type, note }
 
   const headers = useMemo(() => {
     if (!token) return {};
@@ -54,173 +29,141 @@ const TournamentSettings = () => {
     };
   }, [token]);
 
+  // Define all settings with metadata - grouped for better organization
+  const settingsConfig = useMemo(() => [
+    {
+      key: "player_age_range",
+      label: "Độ tuổi cầu thủ",
+      type: "range",
+      fields: ["player_min_age", "player_max_age"],
+      note: "Độ tuổi hợp lệ để đăng ký thi đấu",
+      category: "Quy định cầu thủ"
+    },
+    {
+      key: "team_size",
+      label: "Số lượng cầu thủ trong đội",
+      type: "range",
+      fields: ["team_min_players", "team_max_players"],
+      note: "Số cầu thủ tối thiểu và tối đa",
+      category: "Quy định đội bóng"
+    },
+    {
+      key: "foreign_player_limit",
+      label: "Giới hạn cầu thủ nước ngoài",
+      type: "number",
+      note: "Số lượng cầu thủ nước ngoài tối đa",
+      category: "Quy định đội bóng"
+    },
+    {
+      key: "goal_time_limit",
+      label: "Thời điểm ghi bàn tối đa",
+      type: "number",
+      note: "Phút thi đấu tối đa (ví dụ: 90')",
+      category: "Quy định bàn thắng"
+    },
+    {
+      key: "points_system",
+      label: "Hệ thống điểm số",
+      type: "points",
+      fields: ["points_win", "points_draw", "points_loss"],
+      note: "Điểm khi Thắng / Hòa / Thua",
+      category: "Quy định điểm số"
+    },
+    {
+      key: "ranking_priority",
+      label: "Tiêu chí xếp hạng",
+      type: "ranking",
+      note: "Thứ tự ưu tiên khi xếp hạng",
+      category: "Quy định xếp hạng"
+    },
+  ], []);
+
   useEffect(() => {
     if (!token || !canManageSettings) {
-      setForm(null);
+      setSettings(null);
       setLoading(false);
       return;
     }
-
-    let isMounted = true;
-    const controller = new AbortController();
 
     const fetchSettings = async () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch("/api/settings", {
-          headers,
-          signal: controller.signal,
-        });
+        const response = await fetch("/api/settings", { headers });
         if (!response.ok) {
           throw new Error("Không thể tải cài đặt.");
         }
         const data = await response.json();
-        if (isMounted) {
-          setForm(data?.data || null);
-        }
+        setSettings(data?.data || null);
       } catch (err) {
-        if (err.name === "AbortError" || !isMounted) {
-          return;
-        }
         setError(err.message || "Đã xảy ra lỗi.");
-        setForm(null);
+        setSettings(null);
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     };
 
     fetchSettings();
+  }, [headers, token, canManageSettings]);
 
-    return () => {
-      isMounted = false;
-      controller.abort();
-    };
-  }, [headers, token, refreshKey, canManageSettings]);
-
-  const updateField = (key, value) => {
-    setForm((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
-  };
-
-  const handleNumberChange = (event) => {
-    const { name, value } = event.target;
-    updateField(name, value === "" ? "" : Number(value));
-  };
-
-  const handleAddGoalType = (event) => {
-    event.preventDefault();
-    const trimmed = goalDraft.trim();
-    if (!trimmed) {
-      return;
-    }
-    if (form.goal_types.includes(trimmed)) {
-      setGoalDraft("");
-      return;
-    }
-    updateField("goal_types", [...form.goal_types, trimmed]);
-    setGoalDraft("");
-  };
-
-  const handleRemoveGoalType = (type) => {
-    updateField(
-      "goal_types",
-      form.goal_types.filter((item) => item !== type)
-    );
-  };
-
-  const handlePriorityDragStart = (event, fromIndex) => {
-    event.dataTransfer.setData("text/plain", String(fromIndex));
-  };
-
-  const handlePriorityDragOver = (event) => {
-    event.preventDefault();
-  };
-
-  const handlePriorityDrop = (event, targetIndex) => {
-    event.preventDefault();
-    const fromIndex = Number(event.dataTransfer.getData("text/plain"));
-    if (!Number.isInteger(fromIndex) || fromIndex === targetIndex) {
-      return;
-    }
-    setForm((prev) => {
-      const next = [...prev.ranking_priority];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(targetIndex, 0, moved);
-      return {
-        ...prev,
-        ranking_priority: next,
-      };
-    });
-  };
-
-  const handleSave = async () => {
-    setError(null);
-    setToast(null);
-    try {
-      const prepared = { ...form };
-
-      numericFields.forEach((key) => {
-        const raw = form[key];
-        if (raw === "" || raw === null || raw === undefined) {
-          throw new Error(`${fieldLabels[key]} không được để trống.`);
-        }
-        const parsed = Number(raw);
-        if (!Number.isFinite(parsed) || parsed < 0) {
-          throw new Error(`${fieldLabels[key]} phải là số hợp lệ.`);
-        }
-        prepared[key] = parsed;
+  const handleEdit = (config) => {
+    if (config.type === "range" || config.type === "points") {
+      // For grouped settings, pass all field values
+      const values = config.fields.map(field => settings[field]);
+      setEditModal({
+        key: config.key,
+        label: config.label,
+        values: values,
+        fields: config.fields,
+        type: config.type,
+        note: config.note,
       });
+    } else {
+      // For single settings
+      setEditModal({
+        key: config.key,
+        label: config.label,
+        value: settings[config.key],
+        type: config.type,
+        note: config.note,
+      });
+    }
+  };
 
-      if (!Array.isArray(form.goal_types) || form.goal_types.length === 0) {
-        setSaving(true);
+  const handleModalSave = async () => {
+    if (!editModal) return;
 
-        throw new Error("Cần ít nhất một loại bàn thắng.");
-      }
-      const cleanedGoalTypes = form.goal_types
-        .map((item) => String(item).trim())
-        .filter(
-          (item, index, arr) => item.length > 0 && arr.indexOf(item) === index
-        );
-      if (cleanedGoalTypes.length === 0) {
-        throw new Error("Cần ít nhất một loại bàn thắng.");
-      }
-      prepared.goal_types = cleanedGoalTypes;
-
-      if (
-        !Array.isArray(form.ranking_priority) ||
-        form.ranking_priority.length === 0
-      ) {
-        throw new Error("Cần ít nhất một tiêu chí xếp hạng.");
-      }
-      const cleanedPriority = form.ranking_priority.filter(
-        (item, index, arr) => arr.indexOf(item) === index
-      );
-      if (cleanedPriority.length === 0) {
-        throw new Error("Cần ít nhất một tiêu chí xếp hạng.");
-      }
-      prepared.ranking_priority = cleanedPriority;
-
+    try {
       setSaving(true);
       setError(null);
-      setToast(null);
+
+      let updatedSettings = { ...settings };
+
+      if (editModal.type === "range" || editModal.type === "points") {
+        // Update multiple fields
+        editModal.fields.forEach((field, index) => {
+          updatedSettings[field] = Number(editModal.values[index]);
+        });
+      } else {
+        // Update single field
+        updatedSettings[editModal.key] = editModal.type === "number" ? Number(editModal.value) : editModal.value;
+      }
 
       const response = await fetch("/api/settings", {
         method: "PUT",
         headers,
-        body: JSON.stringify({ settings: prepared }),
+        body: JSON.stringify({ settings: updatedSettings }),
       });
+
       if (!response.ok) {
         const errData = await response.json().catch(() => null);
         throw new Error(errData?.error || "Không thể lưu cài đặt.");
       }
+
       const data = await response.json();
-      setForm(data?.data || prepared);
-      setToast(data?.message || "Đã lưu cài đặt thành công.");
+      setSettings(data?.data || updatedSettings);
+      setToast(`Đã cập nhật: ${editModal.label}`);
+      setEditModal(null);
     } catch (err) {
       setError(err.message || "Đã xảy ra lỗi khi lưu.");
     } finally {
@@ -245,7 +188,7 @@ const TournamentSettings = () => {
         throw new Error(errData?.error || "Không thể khôi phục cài đặt.");
       }
       const data = await res.json();
-      setForm(data?.data || form);
+      setSettings(data?.data || settings);
       setToast(data?.message || "Đã khôi phục mặc định.");
     } catch (err) {
       setError(err.message || "Đã xảy ra lỗi khi khôi phục.");
@@ -254,91 +197,73 @@ const TournamentSettings = () => {
     }
   };
 
-  const handleReload = () => {
-    setRefreshKey((prev) => prev + 1);
+  const formatValue = (config) => {
+    if (config.type === "range") {
+      const [min, max] = config.fields.map(field => settings[field]);
+      return `${min} - ${max}`;
+    }
+    if (config.type === "points") {
+      const [win, draw, loss] = config.fields.map(field => settings[field]);
+      return `${win} / ${draw} / ${loss}`;
+    }
+    if (config.type === "ranking") {
+      const value = settings[config.key];
+      if (Array.isArray(value)) {
+        return value.map(k => RANKING_LABELS[k] || k).join(" > ");
+      }
+    }
+    const value = settings[config.key];
+    if (Array.isArray(value)) {
+      return `${value.length} mục`;
+    }
+    if (typeof value === "number") {
+      return value.toString();
+    }
+    return value || "-";
   };
 
-  const summaryCards = useMemo(() => {
-    if (!form) {
-      return [];
+  // Helper for ranking editor
+  const moveItem = (index, direction) => {
+    if (!editModal || !Array.isArray(editModal.value)) return;
+    const newList = [...editModal.value];
+    
+    // Prevent moving the first item (points) or swapping with it
+    if (index === 0) return; // Cannot move the first item
+    if (direction === "up" && index === 1) return; // Cannot swap with the first item
+
+    if (direction === "up" && index > 0) {
+      [newList[index], newList[index - 1]] = [newList[index - 1], newList[index]];
+    } else if (direction === "down" && index < newList.length - 1) {
+      [newList[index], newList[index + 1]] = [newList[index + 1], newList[index]];
     }
+    setEditModal({ ...editModal, value: newList });
+  };
 
-    const safeNumber = (value) => {
-      const parsed = Number(value);
-      return Number.isFinite(parsed) ? parsed : "-";
-    };
+  const toggleRankingItem = (key) => {
+    if (!editModal || !Array.isArray(editModal.value)) return;
+    
+    // Prevent removing points
+    if (key === "points") return;
 
-    const priorityDisplay = Array.isArray(form.ranking_priority)
-      ? form.ranking_priority.map((item) => priorityLabels[item] || item)
-      : [];
-
-    const compactPriority = priorityDisplay.slice(0, 3).join(" › ");
-    const priorityHint =
-      priorityDisplay.length > 3
-        ? `+${priorityDisplay.length - 3} tiêu chí`
-        : "Ưu tiên áp dụng";
-
-    return [
-      {
-        id: "age-range",
-        label: "Độ tuổi hợp lệ",
-        value: `${safeNumber(form.player_min_age)} – ${safeNumber(
-          form.player_max_age
-        )}`,
-        hint: "Tuổi tối thiểu / tối đa",
-      },
-      {
-        id: "team-size",
-        label: "Quy mô đội bóng",
-        value: `${safeNumber(form.team_min_players)} – ${safeNumber(
-          form.team_max_players
-        )} cầu thủ`,
-        hint: "Tối thiểu / tối đa",
-      },
-      {
-        id: "foreign-limit",
-        label: "Cầu thủ ngoại",
-        value: `${safeNumber(form.foreign_player_limit)}`,
-        hint: "Giới hạn đăng ký",
-      },
-      {
-        id: "points",
-        label: "Điểm số trận đấu",
-        value: `${safeNumber(form.points_win)}/${safeNumber(
-          form.points_draw
-        )}/${safeNumber(form.points_loss)}`,
-        hint: "Thắng / Hòa / Thua",
-      },
-      {
-        id: "goal-types",
-        label: "Loại bàn thắng",
-        value: `${form.goal_types?.length || 0}`,
-        hint: "Mẫu hiện có",
-      },
-      {
-        id: "ranking",
-        label: "Tiêu chí xếp hạng",
-        value: compactPriority || "Chưa cấu hình",
-        hint: priorityHint,
-      },
-    ];
-  }, [form]);
+    const currentList = editModal.value;
+    if (currentList.includes(key)) {
+      // Remove (but prevent removing the last one)
+      if (currentList.length > 1) {
+        setEditModal({ ...editModal, value: currentList.filter(k => k !== key) });
+      }
+    } else {
+      // Add to end
+      setEditModal({ ...editModal, value: [...currentList, key] });
+    }
+  };
 
   if (!canManageSettings) {
     return (
-      <div className="admin-shell">
-        <div className="admin-wrapper">
-          <header className="admin-hero">
-            <div>
-              <span className="admin-hero-badge">Quyền hạn hạn chế</span>
-              <h1>Cài đặt giải đấu</h1>
-              <p>
-                Chỉ quản trị viên giải đấu mới được phép tùy chỉnh thông số.
-              </p>
-            </div>
-          </header>
-          <div className="admin-alert" role="alert">
-            Bạn không có quyền truy cập chức năng này.
+      <div className="tournament-settings-container">
+        <div className="tournament-settings-card">
+          <div className="tournament-settings-header">
+            <h1>Cài đặt giải đấu</h1>
+            <p>Bạn không có quyền truy cập chức năng này</p>
           </div>
         </div>
       </div>
@@ -347,316 +272,289 @@ const TournamentSettings = () => {
 
   if (loading) {
     return (
-      <div className="admin-shell">
-        <div className="admin-wrapper">
-          <header className="admin-hero">
-            <div>
-              <span className="admin-hero-badge">Đang đồng bộ</span>
-              <h1>Cài đặt giải đấu</h1>
-              <p>Hệ thống đang tải cấu hình mới nhất, vui lòng chờ giây lát.</p>
-            </div>
-          </header>
-          <div className="admin-loading">Đang tải cấu hình...</div>
+      <div className="tournament-settings-container">
+        <div className="tournament-settings-card">
+          <div className="tournament-settings-header">
+            <h1>Cài đặt giải đấu</h1>
+            <p>Đang tải dữ liệu...</p>
+          </div>
+          <div className="settings-loading">Đang tải cấu hình...</div>
         </div>
       </div>
     );
   }
 
-  if (!form) {
+  if (!settings) {
     return (
-      <div className="admin-shell">
-        <div className="admin-wrapper">
-          <header className="admin-hero">
-            <div>
-              <span className="admin-hero-badge">Không có dữ liệu</span>
-              <h1>Cài đặt giải đấu</h1>
-              <p>Không thể tải dữ liệu cấu hình. Vui lòng thử lại sau.</p>
-            </div>
-            <div className="admin-hero-actions">
-              <button
-                type="button"
-                className="admin-btn is-ghost"
-                onClick={handleReload}
-              >
-                Thử tải lại
-              </button>
-            </div>
-          </header>
-          {error && (
-            <div className="admin-alert" onClick={() => setError(null)}>
-              {error} (bấm để ẩn)
-            </div>
-          )}
+      <div className="tournament-settings-container">
+        <div className="tournament-settings-card">
+          <div className="tournament-settings-header">
+            <h1>Cài đặt giải đấu</h1>
+            <p>Không thể tải dữ liệu</p>
+          </div>
+          {error && <div className="settings-error">{error}</div>}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="admin-shell">
-      <div className="admin-wrapper">
-        <header className="admin-hero">
-          <div>
-            <span className="admin-hero-badge">Trung tâm cấu hình</span>
-            <h1>Cài đặt giải đấu</h1>
-            <p>
-              Quản lý quy tắc giải đấu, giới hạn đội hình và mô hình tính điểm
-              cho toàn bộ hệ thống.
-            </p>
-          </div>
-          <div className="admin-hero-actions">
-            <button
-              type="button"
-              className="admin-btn is-ghost"
-              onClick={handleReload}
-              disabled={saving}
-            >
-              Làm mới dữ liệu
-            </button>
-          </div>
-        </header>
-
-        {summaryCards.length > 0 && (
-          <ul className="admin-summary" role="list">
-            {summaryCards.map((item) => (
-              <li key={item.id} className="admin-summary-item">
-                <span className="admin-summary-label">{item.label}</span>
-                <strong className="admin-summary-value">{item.value}</strong>
-                <span className="admin-summary-hint">{item.hint}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+    <div className="tournament-settings-container">
+      <div className="tournament-settings-card">
+        <div className="tournament-settings-header">
+          <h1>Thay đổi quy định</h1>
+          <p>Quản lý và điều chỉnh các quy định của giải đấu</p>
+        </div>
 
         {error && (
-          <div className="admin-alert" onClick={() => setError(null)}>
-            {error} (bấm để ẩn)
+          <div style={{ padding: "1rem", background: "#fee2e2", color: "#b91c1c", margin: "1rem" }}>
+            {error}
           </div>
         )}
 
         {toast && (
-          <div className="admin-toast" onClick={() => setToast(null)}>
+          <div style={{ padding: "1rem", background: "#d1fae5", color: "#065f46", margin: "1rem" }}>
             {toast}
           </div>
         )}
 
-        <section className="admin-card">
-          <header>
-            <h2>Quy định cầu thủ & đội bóng</h2>
-            <span>Điều chỉnh giới hạn đăng ký cầu thủ cho từng đội.</span>
-          </header>
-          <div className="admin-form-grid is-two-column">
-            <label className="admin-field">
-              <span className="admin-label">Tuổi tối thiểu</span>
-              <input
-                type="number"
-                name="player_min_age"
-                min="0"
-                className="admin-input"
-                value={form.player_min_age}
-                onChange={handleNumberChange}
-              />
-            </label>
-            <label className="admin-field">
-              <span className="admin-label">Tuổi tối đa</span>
-              <input
-                type="number"
-                name="player_max_age"
-                min="0"
-                className="admin-input"
-                value={form.player_max_age}
-                onChange={handleNumberChange}
-              />
-            </label>
-            <label className="admin-field">
-              <span className="admin-label">Số cầu thủ tối thiểu</span>
-              <input
-                type="number"
-                name="team_min_players"
-                min="0"
-                className="admin-input"
-                value={form.team_min_players}
-                onChange={handleNumberChange}
-              />
-            </label>
-            <label className="admin-field">
-              <span className="admin-label">Số cầu thủ tối đa</span>
-              <input
-                type="number"
-                name="team_max_players"
-                min="0"
-                className="admin-input"
-                value={form.team_max_players}
-                onChange={handleNumberChange}
-              />
-            </label>
-            <label className="admin-field">
-              <span className="admin-label">Giới hạn cầu thủ nước ngoài</span>
-              <input
-                type="number"
-                name="foreign_player_limit"
-                min="0"
-                className="admin-input"
-                value={form.foreign_player_limit}
-                onChange={handleNumberChange}
-              />
-            </label>
-          </div>
-        </section>
-
-        <section className="admin-card">
-          <header>
-            <h2>Quy định bàn thắng</h2>
-            <span>Tùy chỉnh loại bàn thắng và giới hạn thời gian ghi bàn.</span>
-          </header>
-          <div className="admin-scoreboard">
-            <div className="admin-scoreboard-title">
-              <span>Loại bàn thắng hiện có</span>
-              <strong className="admin-scoreboard-value">
-                {form.goal_types.length}
-              </strong>
-            </div>
-            <div className="admin-scoreboard-title">
-              <span>Giới hạn thời điểm</span>
-              <strong className="admin-scoreboard-value">
-                {form.goal_time_limit}&apos;
-              </strong>
-            </div>
-          </div>
-          <form className="admin-form-grid" onSubmit={handleAddGoalType}>
-            <div className="admin-field">
-              <label className="admin-label" htmlFor="goal-type-input">
-                Thêm loại bàn thắng
-              </label>
-              <div className="admin-inline">
-                <input
-                  id="goal-type-input"
-                  type="text"
-                  className="admin-input"
-                  value={goalDraft}
-                  placeholder="Nhập tên loại bàn thắng"
-                  onChange={(event) => setGoalDraft(event.target.value)}
-                />
-                <button
-                  type="submit"
-                  className="admin-btn is-primary"
-                  disabled={!goalDraft.trim()}
-                >
-                  Thêm
-                </button>
-              </div>
-            </div>
-          </form>
-          <ul className="ts-chip-list">
-            {form.goal_types.map((type) => (
-              <li key={type} className="ts-chip">
-                <span>{type}</span>
-                <button
-                  type="button"
-                  className="ts-chip-remove"
-                  onClick={() => handleRemoveGoalType(type)}
-                  aria-label={`Xóa loại bàn thắng ${type}`}
-                >
-                  ×
-                </button>
-              </li>
-            ))}
-          </ul>
-          <label className="admin-field">
-            <span className="admin-label">Thời điểm ghi bàn tối đa (phút)</span>
-            <input
-              type="number"
-              name="goal_time_limit"
-              min="0"
-              className="admin-input"
-              value={form.goal_time_limit}
-              onChange={handleNumberChange}
-            />
-          </label>
-        </section>
-
-        <section className="admin-card">
-          <header>
-            <h2>Quy định xếp hạng</h2>
-            <span>Thiết lập điểm số và thứ tự ưu tiên khi xếp hạng.</span>
-          </header>
-          <div className="admin-form-grid is-two-column">
-            <label className="admin-field">
-              <span className="admin-label">Điểm khi thắng</span>
-              <input
-                type="number"
-                name="points_win"
-                min="0"
-                className="admin-input"
-                value={form.points_win}
-                onChange={handleNumberChange}
-              />
-            </label>
-            <label className="admin-field">
-              <span className="admin-label">Điểm khi hòa</span>
-              <input
-                type="number"
-                name="points_draw"
-                min="0"
-                className="admin-input"
-                value={form.points_draw}
-                onChange={handleNumberChange}
-              />
-            </label>
-            <label className="admin-field">
-              <span className="admin-label">Điểm khi thua</span>
-              <input
-                type="number"
-                name="points_loss"
-                min="0"
-                className="admin-input"
-                value={form.points_loss}
-                onChange={handleNumberChange}
-              />
-            </label>
-          </div>
-          <div className="ts-priority">
-            <h3>Thứ tự ưu tiên</h3>
-            <p>Kéo và thả để sắp xếp tiêu chí xếp hạng.</p>
-            <ul className="ts-priority-list">
-              {form.ranking_priority.map((item, index) => (
-                <li
-                  key={item}
-                  className="ts-priority-item"
-                  draggable
-                  onDragStart={(event) => handlePriorityDragStart(event, index)}
-                  onDragOver={handlePriorityDragOver}
-                  onDrop={(event) => handlePriorityDrop(event, index)}
-                >
-                  <span className="ts-priority-handle" aria-hidden="true">
-                    ☰
-                  </span>
-                  <span>{priorityLabels[item] || item}</span>
-                </li>
+        <div className="settings-table-wrapper">
+          <table className="settings-table">
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Tên quy định</th>
+                <th>Thao tác</th>
+                <th>Giá trị</th>
+                <th>Ghi chú</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {settingsConfig.map((config, index) => (
+                <tr key={config.key}>
+                  <td>{index + 1}</td>
+                  <td className="setting-name">{config.label}</td>
+                  <td className="setting-category">{config.category}</td>
+                  <td className="setting-value">{formatValue(config)}</td>
+                  <td className="setting-note">{config.note}</td>
+                  <td>
+                    <button
+                      className="btn-edit"
+                      onClick={() => handleEdit(config)}
+                      disabled={saving}
+                    >
+                      ✏️ Sửa
+                    </button>
+                  </td>
+                </tr>
               ))}
-            </ul>
-          </div>
-        </section>
+            </tbody>
+          </table>
+        </div>
 
-        <footer className="admin-actions">
+        <div className="settings-footer">
           <button
-            type="button"
-            className="admin-btn is-danger"
+            className="btn btn-reset"
             onClick={handleReset}
             disabled={saving}
           >
-            Đặt lại mặc định
+            🔄 Đặt lại mặc định
           </button>
-          <button
-            type="button"
-            className="admin-btn is-primary"
-            onClick={handleSave}
-            disabled={saving}
-          >
-            {saving ? "Đang lưu..." : "Lưu thay đổi"}
-          </button>
-        </footer>
+        </div>
       </div>
+
+      {/* Edit Modal */}
+      {editModal && (
+        <div className="modal-overlay" onClick={() => !saving && setEditModal(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Sửa quy định</h3>
+            </div>
+            <div className="modal-body">
+              {editModal.type === "range" ? (
+                <>
+                  <div className="modal-field">
+                    <label className="modal-label">Giá trị tối thiểu</label>
+                    <input
+                      type="number"
+                      className="modal-input"
+                      value={editModal.values[0]}
+                      onChange={(e) =>
+                        setEditModal({
+                          ...editModal,
+                          values: [e.target.value, editModal.values[1]],
+                        })
+                      }
+                      min={0}
+                    />
+                  </div>
+                  <div className="modal-field">
+                    <label className="modal-label">Giá trị tối đa</label>
+                    <input
+                      type="number"
+                      className="modal-input"
+                      value={editModal.values[1]}
+                      onChange={(e) =>
+                        setEditModal({
+                          ...editModal,
+                          values: [editModal.values[0], e.target.value],
+                        })
+                      }
+                      min={0}
+                    />
+                  </div>
+                  <div className="modal-hint">{editModal.note}</div>
+                </>
+              ) : editModal.type === "points" ? (
+                <>
+                  <div className="modal-field">
+                    <label className="modal-label">Điểm khi thắng</label>
+                    <input
+                      type="number"
+                      className="modal-input"
+                      value={editModal.values[0]}
+                      onChange={(e) =>
+                        setEditModal({
+                          ...editModal,
+                          values: [e.target.value, editModal.values[1], editModal.values[2]],
+                        })
+                      }
+                      min={0}
+                    />
+                  </div>
+                  <div className="modal-field">
+                    <label className="modal-label">Điểm khi hòa</label>
+                    <input
+                      type="number"
+                      className="modal-input"
+                      value={editModal.values[1]}
+                      onChange={(e) =>
+                        setEditModal({
+                          ...editModal,
+                          values: [editModal.values[0], e.target.value, editModal.values[2]],
+                        })
+                      }
+                      min={0}
+                    />
+                  </div>
+                  <div className="modal-field">
+                    <label className="modal-label">Điểm khi thua</label>
+                    <input
+                      type="number"
+                      className="modal-input"
+                      value={editModal.values[2]}
+                      onChange={(e) =>
+                        setEditModal({
+                          ...editModal,
+                          values: [editModal.values[0], editModal.values[1], e.target.value],
+                        })
+                      }
+                      min={0}
+                    />
+                  </div>
+                  <div className="modal-hint">{editModal.note}</div>
+                </>
+              ) : editModal.type === "ranking" ? (
+                <div className="ranking-editor">
+                  <div className="ranking-list">
+                    <label className="modal-label">Thứ tự ưu tiên (kéo thả hoặc dùng nút)</label>
+                    {editModal.value.map((key, index) => (
+                      <div key={key} className="ranking-item">
+                        <span>
+                          {index + 1}. {RANKING_LABELS[key] || key}
+                          {key === "points" && <span style={{ marginLeft: "8px", fontSize: "0.8em", color: "#666", fontStyle: "italic" }}>(Cố định)</span>}
+                        </span>
+                        <div className="ranking-actions">
+                          <button 
+                            type="button"
+                            className="btn-rank-action"
+                            disabled={index === 0 || index === 1}
+                            onClick={() => moveItem(index, "up")}
+                            title="Lên trên"
+                            style={{ visibility: index === 0 ? 'hidden' : 'visible' }}
+                          >
+                            ↑
+                          </button>
+                          <button 
+                            type="button"
+                            className="btn-rank-action"
+                            disabled={index === editModal.value.length - 1 || index === 0}
+                            onClick={() => moveItem(index, "down")}
+                            title="Xuống dưới"
+                            style={{ visibility: index === 0 ? 'hidden' : 'visible' }}
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-rank-remove"
+                            onClick={() => toggleRankingItem(key)}
+                            title="Bỏ tiêu chí này"
+                            disabled={key === "points"}
+                            style={{ visibility: key === "points" ? 'hidden' : 'visible' }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="ranking-available">
+                    <label className="modal-label">Tiêu chí khác:</label>
+                    <div className="ranking-available-list">
+                      {Object.keys(RANKING_LABELS)
+                        .filter(key => !editModal.value.includes(key))
+                        .map(key => (
+                          <button
+                            key={key}
+                            type="button"
+                            className="btn-rank-add"
+                            onClick={() => toggleRankingItem(key)}
+                          >
+                            {RANKING_LABELS[key]}
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                  <div className="modal-hint">{editModal.note}</div>
+                </div>
+              ) : (
+                <div className="modal-field">
+                  <label className="modal-label">{editModal.label}</label>
+                  <input
+                    type={editModal.type}
+                    className="modal-input"
+                    value={editModal.value}
+                    onChange={(e) =>
+                      setEditModal({ ...editModal, value: e.target.value })
+                    }
+                    min={editModal.type === "number" ? 0 : undefined}
+                  />
+                  <div className="modal-hint">{editModal.note}</div>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button
+                className="modal-btn modal-btn-cancel"
+                onClick={() => setEditModal(null)}
+                disabled={saving}
+              >
+                Hủy
+              </button>
+              <button
+                className="modal-btn modal-btn-save"
+                onClick={handleModalSave}
+                disabled={saving}
+              >
+                {saving ? "Đang lưu..." : "Lưu"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

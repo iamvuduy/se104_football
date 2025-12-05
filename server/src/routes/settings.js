@@ -88,7 +88,16 @@ router.put("/", admin, async (req, res) => {
       if (cleaned.length === 0) {
         throw new Error("Phải có ít nhất một tiêu chí xếp hạng.");
       }
-      sanitized.ranking_priority = cleaned;
+      
+      // Enforce "points" as the first criterion
+      if (cleaned[0] !== "points") {
+        // Remove "points" if it exists elsewhere
+        const withoutPoints = cleaned.filter(item => item !== "points");
+        // Prepend "points"
+        sanitized.ranking_priority = ["points", ...withoutPoints];
+      } else {
+        sanitized.ranking_priority = cleaned;
+      }
     }
   } catch (validationErr) {
     return res.status(400).json({ error: validationErr.message });

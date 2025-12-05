@@ -11,7 +11,7 @@ const DEFAULT_SETTINGS = {
   points_win: 3,
   points_draw: 1,
   points_loss: 0,
-  ranking_priority: ["points", "goal_difference", "goals_for", "head_to_head"],
+  ranking_priority: ["points", "goal_difference", "away_goals", "head_to_head"],
 };
 
 const RANKING_OPTIONS = new Set([

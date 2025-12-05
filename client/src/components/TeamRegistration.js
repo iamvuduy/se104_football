@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
-import NotificationModal from "./NotificationModal";
 import "./TeamRegistration.css";
 import {
   FaClipboardList,
@@ -9,6 +8,8 @@ import {
   FaHistory,
   FaPlus,
   FaTrash,
+  FaCheckCircle,
+  FaExclamationCircle,
 } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 
@@ -16,18 +17,22 @@ const TEAM_CODE_REGEX = /^FC\d{3}$/;
 
 const TeamRegistration = () => {
   const { token } = useAuth();
-  const [notification, setNotification] = useState({
-    isOpen: false,
-    type: "",
-    message: "",
-  });
+  const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
+
+  // Auto-hide toast after 3 seconds
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   // State for the form
   const [teamName, setTeamName] = useState("");
   const [homeStadium, setHomeStadium] = useState("");
   const [teamCode, setTeamCode] = useState("");
   const [players, setPlayers] = useState([
-    { name: "", dob: "", type: "Trong nước", notes: "" },
+    { playerCode: "", name: "", dob: "", type: "Trong nước", notes: "" },
   ]);
   const [settings, setSettings] = useState(null);
   const calculateAge = (dob) => {
@@ -50,22 +55,22 @@ const TeamRegistration = () => {
   // State for the history list
   const [teamHistory, setTeamHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const teamsPerPage = 5;
 
   const endOfPlayersRef = useRef(null); // Ref for auto-scrolling
 
-  const handleCloseNotification = () => {
-    setNotification({ isOpen: false, type: "", message: "" });
-  };
+
 
   const fetchTeamHistory = async () => {
     try {
       setHistoryLoading(true);
       const response = await axios.get("/api/teams");
-      setTeamHistory((response.data.data || []).slice(-5).reverse());
+      setTeamHistory((response.data.data || []).reverse());
+      setCurrentPage(1); // Reset to first page when refetching
     } catch (error) {
       console.error("Failed to fetch team history:", error);
-      setNotification({
-        isOpen: true,
+      setToast({
         type: "error",
         message: "Không thể tải lịch sử đội bóng.",
       });
@@ -112,6 +117,7 @@ const TeamRegistration = () => {
         return prev;
       }
       const extras = Array.from({ length: minPlayers - prev.length }, () => ({
+        playerCode: "",
         name: "",
         dob: "",
         type: "Trong nước",
@@ -157,8 +163,7 @@ const TeamRegistration = () => {
 
   const handleAddPlayer = () => {
     if (players.length >= maxPlayers) {
-      setNotification({
-        isOpen: true,
+      setToast({
         type: "error",
         message: `Số lượng cầu thủ đã đạt tối đa (${maxPlayers}).`,
       });
@@ -166,7 +171,7 @@ const TeamRegistration = () => {
     }
     setPlayers([
       ...players,
-      { name: "", dob: "", type: "Trong nước", notes: "" },
+      { playerCode: "", name: "", dob: "", type: "Trong nước", notes: "" },
     ]);
   };
 
@@ -176,8 +181,7 @@ const TeamRegistration = () => {
       values.splice(index, 1);
       setPlayers(values);
     } else {
-      setNotification({
-        isOpen: true,
+      setToast({
         type: "error",
         message: `Đội bóng phải có ít nhất ${minPlayers} cầu thủ.`,
       });
@@ -291,8 +295,7 @@ const TeamRegistration = () => {
 
     if (validationMessages.length > 0) {
       const combinedMessage = validationMessages.join(" ");
-      setNotification({
-        isOpen: true,
+      setToast({
         type: "error",
         message: combinedMessage,
       });
@@ -307,50 +310,34 @@ const TeamRegistration = () => {
         homeStadium,
         players,
       });
-      setNotification({
-        isOpen: true,
+      setToast({
         type: "success",
         message: response.data.message || "Đăng ký đội bóng thành công!",
       });
       setTeamCode("");
       setTeamName("");
       setHomeStadium("");
-      setPlayers([{ name: "", dob: "", type: "Trong nước", notes: "" }]);
+      setPlayers([{ playerCode: "", name: "", dob: "", type: "Trong nước", notes: "" }]);
       fetchTeamHistory();
     } catch (error) {
       const errorMessage =
-        error.response?.data?.message || "Đã có lỗi xảy ra, vui lòng thử lại.";
+        error.response?.data?.error || error.response?.data?.message || "Đã có lỗi xảy ra, vui lòng thử lại.";
 
-      const lowerMsg = errorMessage.toLowerCase();
-
-      if (
-        lowerMsg.includes("mã đội") ||
-        lowerMsg.includes("team") ||
-        lowerMsg.includes("exist")
-      ) {
-        setNotification({
-          isOpen: true,
-          type: "error",
-          message: "Mã đội hoặc tên đội đã tồn tại. Vui lòng kiểm tra lại.",
-        });
-      } else {
-        setNotification({
-          isOpen: true,
-          type: "error",
-          message: `Đăng ký thất bại: ${errorMessage}`,
-        });
-      }
+      setToast({
+        type: "error",
+        message: errorMessage,
+      });
     }
   };
 
   return (
     <div className="registration-container">
-      <NotificationModal
-        isOpen={notification.isOpen}
-        type={notification.type}
-        message={notification.message}
-        onClose={handleCloseNotification}
-      />
+      {toast && (
+        <div className={`toast-notification toast-${toast.type}`}>
+          {toast.type === "success" ? <FaCheckCircle /> : <FaExclamationCircle />}
+          {toast.message}
+        </div>
+      )}
       <div className="row">
         <div className="col-lg-8 mb-3 mb-lg-0">
           <div className="registration-form-card">
@@ -414,10 +401,11 @@ const TeamRegistration = () => {
                   <thead>
                     <tr>
                       <th style={{ width: "5%" }}>#</th>
-                      <th>Cầu Thủ</th>
-                      <th>Ngày Sinh</th>
-                      <th>Loại Cầu Thủ</th>
-                      <th>Ghi Chú</th>
+                      <th style={{ width: "10%" }}>Mã Cầu Thủ</th>
+                      <th style={{ width: "27%" }}>Cầu Thủ</th>
+                      <th style={{ width: "8%" }}>Ngày Sinh</th>
+                      <th style={{ width: "17%" }}>Loại Cầu Thủ</th>
+                      <th style={{ width: "23%" }}>Ghi Chú</th>
                       <th style={{ width: "5%" }}></th>
                     </tr>
                   </thead>
@@ -425,6 +413,16 @@ const TeamRegistration = () => {
                     {players.map((player, index) => (
                       <tr key={index}>
                         <td className="text-center">{index + 1}</td>
+                        <td>
+                          <input
+                            type="text"
+                            name="playerCode"
+                            className="form-control"
+                            value={player.playerCode}
+                            onChange={(e) => handlePlayerChange(index, e)}
+                            placeholder="VD: P001"
+                          />
+                        </td>
                         <td>
                           <input
                             type="text"
@@ -481,7 +479,7 @@ const TeamRegistration = () => {
                       </tr>
                     ))}
                     <tr>
-                      <td style={{ padding: 0 }} colSpan="6">
+                      <td style={{ padding: 0 }} colSpan="7">
                         <div ref={endOfPlayersRef} />
                       </td>
                     </tr>
@@ -514,26 +512,72 @@ const TeamRegistration = () => {
             ) : teamHistory.length === 0 ? (
               <p>Chưa có đội nào được đăng ký.</p>
             ) : (
-              <div className="list-group list-group-flush">
-                {teamHistory.map((team) => (
-                  <Link
-                    key={team.id}
-                    to={`/teams/${team.id}`}
-                    className="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                  >
-                    <div>
-                      <div className="fw-bold">
-                        {team.team_code ? `${team.team_code} · ` : ""}
-                        {team.name}
-                      </div>
-                      <small className="text-muted">{team.home_stadium}</small>
-                    </div>
-                    <span className="badge bg-primary rounded-pill">
-                      {team.player_count}
-                    </span>
-                  </Link>
-                ))}
-              </div>
+              <>
+                <div className="list-group list-group-flush">
+                  {(() => {
+                    const indexOfLastTeam = currentPage * teamsPerPage;
+                    const indexOfFirstTeam = indexOfLastTeam - teamsPerPage;
+                    const currentTeams = teamHistory.slice(indexOfFirstTeam, indexOfLastTeam);
+                    
+                    return currentTeams.map((team) => (
+                      <Link
+                        key={team.id}
+                        to={`/teams/${team.id}`}
+                        className="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                      >
+                        <div>
+                          <div className="fw-bold">
+                            {team.team_code ? `${team.team_code} · ` : ""}
+                            {team.name}
+                          </div>
+                          <small className="text-muted">{team.home_stadium}</small>
+                        </div>
+                        <span className="badge bg-primary rounded-pill">
+                          {team.player_count}
+                        </span>
+                      </Link>
+                    ));
+                  })()}
+                </div>
+                
+                {/* Pagination Controls */}
+                {teamHistory.length > teamsPerPage && (
+                  <div className="pagination-container">
+                    <button
+                      className="pagination-btn"
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                    >
+                      ‹
+                    </button>
+                    
+                    {(() => {
+                      const totalPages = Math.ceil(teamHistory.length / teamsPerPage);
+                      const pages = [];
+                      for (let i = 1; i <= totalPages; i++) {
+                        pages.push(
+                          <button
+                            key={i}
+                            className={`pagination-btn ${currentPage === i ? 'active' : ''}`}
+                            onClick={() => setCurrentPage(i)}
+                          >
+                            {i}
+                          </button>
+                        );
+                      }
+                      return pages;
+                    })()}
+                    
+                    <button
+                      className="pagination-btn"
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(teamHistory.length / teamsPerPage)))}
+                      disabled={currentPage === Math.ceil(teamHistory.length / teamsPerPage)}
+                    >
+                      ›
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

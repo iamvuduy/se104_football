@@ -6,7 +6,7 @@ import Home from "./components/Home";
 import TeamRegistration from "./components/TeamRegistration";
 import TeamList from "./components/TeamList";
 import TeamDetails from "./components/TeamDetails";
-import EditTeam from "./components/EditTeam"; // Import EditTeam
+import EditTeam from "./components/EditTeam";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -16,9 +16,9 @@ import ScheduleManagement from "./components/ScheduleManagement";
 import RecordMatchResult from "./components/RecordMatchResult";
 import TeamLeaderboard from "./components/TeamLeaderboard";
 import TopScorerLeaderboard from "./components/TopScorerLeaderboard";
-import MatchResultList from "./components/MatchResultList"; // Import MatchResultList
 import PlayerLookup from "./components/PlayerLookup";
 import TournamentSettings from "./components/TournamentSettings";
+import MatchResults from "./components/MatchResults";
 
 function App() {
   return (
@@ -36,19 +36,17 @@ function App() {
               <Route path="/register-team" element={<TeamRegistration />} />
               <Route path="/teams" element={<TeamList />} />
               <Route path="/teams/:id" element={<TeamDetails />} />
-              <Route path="/teams/:id/edit" element={<EditTeam />} />{" "}
-              {/* Add this route */}
+              <Route path="/teams/:id/edit" element={<EditTeam />} />
               <Route path="/admin/users" element={<UserManagement />} />
               <Route path="/admin/schedules" element={<ScheduleManagement />} />
               <Route path="/record-result" element={<RecordMatchResult />} />
-              <Route path="/match-results" element={<MatchResultList />} />{" "}
-              {/* Add this route */}
               <Route path="/team-leaderboard" element={<TeamLeaderboard />} />
               <Route
                 path="/top-scorer-leaderboard"
                 element={<TopScorerLeaderboard />}
               />
               <Route path="/player-lookup" element={<PlayerLookup />} />
+              <Route path="/match-results" element={<MatchResults />} />
               <Route
                 path="/admin/tournament-settings"
                 element={<TournamentSettings />}

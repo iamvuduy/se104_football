@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../context/AuthContext";
 import "./PlayerLookup.css";
+import { FaFilter, FaTimes } from "react-icons/fa";
 
 const normalizeName = (value = "") =>
   value
@@ -67,54 +68,89 @@ const matchesInitials = (playerName = "", query = "") => {
 const PlayerLookup = () => {
   const { token } = useAuth();
   const [query, setQuery] = useState("");
-  const [players, setPlayers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [allPlayers, setAllPlayers] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [hasSearched, setHasSearched] = useState(false);
+  
+  // Filter states
+  const [selectedTeam, setSelectedTeam] = useState("");
+  const [selectedPlayerType, setSelectedPlayerType] = useState("");
 
-  const handleSearch = async (event) => {
-    event.preventDefault();
-    const trimmedQuery = query.trim();
-
-    if (!trimmedQuery) {
-      setError("Vui lòng nhập tên cầu thủ.");
-      setPlayers([]);
-      setHasSearched(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setHasSearched(true);
-
-    try {
-      const response = await fetch(
-        `/api/players?search=${encodeURIComponent(trimmedQuery)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Không thể tra cứu cầu thủ.");
+  // Load all players and teams on mount
+  useEffect(() => {
+    const loadData = async () => {
+      if (!token) {
+        setLoading(false);
+        return;
       }
 
-      const data = await response.json();
-      const fetchedPlayers = data?.data || [];
-      const filteredPlayers = fetchedPlayers.filter((player) =>
-        matchesInitials(player.playerName, trimmedQuery)
-      );
+      setLoading(true);
+      setError(null);
 
-      setPlayers(filteredPlayers);
-    } catch (err) {
-      setError(err.message || "Đã xảy ra lỗi, vui lòng thử lại.");
-      setPlayers([]);
-    } finally {
-      setLoading(false);
+      try {
+        const [playersRes, teamsRes] = await Promise.all([
+          fetch("/api/players", {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch("/api/teams", {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+
+        if (!playersRes.ok) {
+          throw new Error("Không thể tải danh sách cầu thủ.");
+        }
+
+        const playersData = await playersRes.json();
+        setAllPlayers(playersData?.data || []);
+
+        if (teamsRes.ok) {
+          const teamsData = await teamsRes.json();
+          setTeams(teamsData?.data || []);
+        }
+      } catch (err) {
+        setError(err.message || "Đã xảy ra lỗi khi tải dữ liệu.");
+        setAllPlayers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [token]);
+
+  // Filter and search players
+  const filteredPlayers = useMemo(() => {
+    let result = [...allPlayers];
+
+    // Filter by team
+    if (selectedTeam) {
+      result = result.filter((player) => player.teamName === selectedTeam);
     }
+
+    // Filter by player type
+    if (selectedPlayerType) {
+      result = result.filter((player) => player.playerType === selectedPlayerType);
+    }
+
+    // Filter by search query
+    if (query.trim()) {
+      result = result.filter((player) =>
+        matchesInitials(player.playerName, query.trim())
+      );
+    }
+
+    return result;
+  }, [allPlayers, selectedTeam, selectedPlayerType, query]);
+
+  const handleClearFilters = () => {
+    setSelectedTeam("");
+    setSelectedPlayerType("");
+    setQuery("");
   };
+
+  const hasActiveFilters = selectedTeam || selectedPlayerType || query.trim();
 
   return (
     <div className="player-lookup-shell">
@@ -124,72 +160,91 @@ const PlayerLookup = () => {
           Tìm nhanh hồ sơ cầu thủ, đội bóng và thống kê bàn thắng ngay trong hệ
           thống giải đấu của bạn.
         </p>
-        <div className="player-lookup-hero-meta">
-          <div className="player-lookup-meta-item">
-            <span className="player-lookup-meta-label">Nguồn dữ liệu</span>
-            <span className="player-lookup-meta-value">Ban tổ chức</span>
-          </div>
-          <div className="player-lookup-meta-item">
-            <span className="player-lookup-meta-label">Cập nhật</span>
-            <span className="player-lookup-meta-value">
-              Theo thời gian thực
-            </span>
-          </div>
-          <div className="player-lookup-meta-item">
-            <span className="player-lookup-meta-label">Bộ lọc</span>
-            <span className="player-lookup-meta-value">Chữ cái đầu</span>
-          </div>
-        </div>
       </section>
 
       <section className="player-lookup-card">
-        <form className="player-lookup-form" onSubmit={handleSearch}>
+        <div className="player-lookup-filters">
           <div className="player-lookup-input-group">
             <input
               type="search"
               value={query}
-              placeholder="Nhập chữ cái đầu (ví dụ: N V A hoặc NVA)"
+              placeholder="Tìm theo tên"
               onChange={(e) => setQuery(e.target.value)}
             />
-            <button type="submit" disabled={loading}>
-              {loading ? "Đang tra cứu..." : "Tra cứu"}
-            </button>
           </div>
-          <p className="player-lookup-hint">
-            Gợi ý: nhập chữ cái đầu theo thứ tự họ - tên đệm - tên, ví dụ "N V
-            A" hoặc "NVA".
-          </p>
-        </form>
+
+          <div className="player-lookup-actions">
+            <div className="filter-group">
+              <select
+                value={selectedTeam}
+                onChange={(e) => setSelectedTeam(e.target.value)}
+                className="filter-select"
+              >
+                <option value="">Tất cả đội</option>
+                {teams.map((team) => (
+                  <option key={team.id} value={team.name}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-group">
+              <select
+                value={selectedPlayerType}
+                onChange={(e) => setSelectedPlayerType(e.target.value)}
+                className="filter-select"
+              >
+                <option value="">Tất cả loại cầu thủ</option>
+                <option value="Trong nước">Trong nước</option>
+                <option value="Ngoài nước">Ngoài nước</option>
+              </select>
+            </div>
+
+            {hasActiveFilters && (
+              <button
+                onClick={handleClearFilters}
+                className="clear-filters-btn"
+                title="Xóa bộ lọc"
+              >
+                <FaTimes /> Xóa lọc
+              </button>
+            )}
+          </div>
+        </div>
 
         {loading && (
           <div className="player-lookup-loading-state">
             <span className="player-lookup-spinner" aria-hidden="true" />
-            <span>Đang tra cứu dữ liệu...</span>
+            <span>Đang tải dữ liệu...</span>
           </div>
         )}
 
         {error && <div className="player-lookup-error">{error}</div>}
 
-        {hasSearched && !loading && (
+        {!loading && (
           <div className="player-lookup-result">
             <div className="player-lookup-result-header">
               <div>
                 <h2>Danh sách cầu thủ</h2>
                 <p>
-                  {players.length > 0
-                    ? `${
-                        players.length
-                      } cầu thủ phù hợp với từ khóa "${query.trim()}"`
-                    : "Không có cầu thủ nào trùng khớp với từ khóa"}
+                  {filteredPlayers.length > 0
+                    ? `${filteredPlayers.length} cầu thủ ${
+                        hasActiveFilters ? "phù hợp với bộ lọc" : "trong hệ thống"
+                      }`
+                    : "Không có cầu thủ nào phù hợp"}
                 </p>
               </div>
-              <span className="player-lookup-result-badge">BM4</span>
             </div>
 
-            {players.length === 0 ? (
+            {filteredPlayers.length === 0 ? (
               <div className="player-lookup-empty-card">
-                <h3>Chưa có kết quả</h3>
-                <p>Hãy thử lại với chữ cái đầu khác hoặc kiểm tra chính tả.</p>
+                <h3>Không có kết quả</h3>
+                <p>
+                  {hasActiveFilters
+                    ? "Không tìm thấy cầu thủ nào phù hợp. Hãy thử điều chỉnh bộ lọc."
+                    : "Chưa có cầu thủ nào trong hệ thống."}
+                </p>
               </div>
             ) : (
               <div className="player-lookup-table-wrapper">
@@ -197,6 +252,7 @@ const PlayerLookup = () => {
                   <thead>
                     <tr>
                       <th>STT</th>
+                      <th>Mã cầu thủ</th>
                       <th>Cầu thủ</th>
                       <th>Đội</th>
                       <th>Loại cầu thủ</th>
@@ -204,13 +260,14 @@ const PlayerLookup = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {players.map((player, index) => (
+                    {filteredPlayers.map((player, index) => (
                       <tr key={player.id || `${player.playerName}-${index}`}>
                         <td>{index + 1}</td>
+                        <td>{player.playerCode || '-'}</td>
                         <td>{player.playerName}</td>
                         <td>{player.teamName}</td>
                         <td>{player.playerType}</td>
-                        <td>{player.totalGoals}</td>
+                        <td>{player.totalGoals || 0}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -148,11 +148,25 @@ const validatePlayersWithSettings = (players, settings) => {
     return `Số cầu thủ nước ngoài không được vượt quá ${foreignLimit}.`;
   }
 
+  // Validate player codes
+  const playerCodes = new Set();
+  for (let i = 0; i < players.length; i++) {
+    const code = players[i].playerCode;
+    if (!code) {
+      return `Cầu thủ thứ ${i + 1} thiếu mã cầu thủ.`;
+    }
+    if (playerCodes.has(code)) {
+      return `Mã cầu thủ '${code}' bị trùng lặp trong danh sách đăng ký.`;
+    }
+    playerCodes.add(code);
+  }
+
   return null;
 };
 
 router.post("/", async (req, res) => {
   const { teamCode, teamName, homeStadium, players } = req.body;
+  console.log("DEBUG: POST /api/teams payload:", JSON.stringify(req.body, null, 2));
 
   if (!teamCode || teamName === undefined || homeStadium === undefined) {
     return res.status(400).json({ error: "Invalid data provided." });
@@ -214,32 +228,46 @@ router.post("/", async (req, res) => {
 
       (async () => {
         try {
-          for (const player of players) {
-            await new Promise((resolve, reject) => {
-              const { name, dob, type, notes } = player;
-              db.run(
-                insertPlayerSql,
-                [teamId, name, dob, type, notes],
-                (err) => {
-                  if (err) {
-                    console.error("Error inserting player:", err.message);
-                    reject(err);
-                  } else {
-                    resolve();
-                  }
-                }
-              );
-            });
-          }
+            for (const player of players) {
+              await new Promise((resolve, reject) => {
+                const { name, dob, type, notes, playerCode } = player;
+                
+                // Check for unique player code in DB
+                db.get("SELECT id FROM players WHERE player_code = ?", [playerCode], (err, row) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    if (row) {
+                        reject(new Error(`Mã cầu thủ '${playerCode}' đã tồn tại trong hệ thống.`));
+                        return;
+                    }
+
+                    db.run(
+                      `INSERT INTO players (team_id, name, dob, type, notes, player_code) VALUES (?, ?, ?, ?, ?, ?)`,
+                      [teamId, name, dob, type, notes, playerCode],
+                      (err) => {
+                        if (err) {
+                          console.error("Error inserting player:", err.message);
+                          reject(err);
+                        } else {
+                          resolve();
+                        }
+                      }
+                    );
+                });
+              });
+            }
           res
             .status(201)
             .json({ message: "Team registered successfully!", teamId: teamId });
         } catch (err) {
+          console.error("CRITICAL ERROR in POST /api/teams:", err);
           // Attempt to clean up the created team if player insertion fails
           db.run(`DELETE FROM teams WHERE id = ?`, [teamId], () => {
             res
               .status(500)
-              .json({ error: "An error occurred while saving players." });
+              .json({ error: err.message || "An error occurred while saving players." });
           });
         }
       })();
@@ -337,19 +365,35 @@ router.put("/:id", async (req, res) => {
           try {
             for (const player of players) {
               await new Promise((resolve, reject) => {
-                const { name, dob, type, notes } = player;
-                db.run(
-                  insertPlayerSql,
-                  [teamId, name, dob, type, notes],
-                  (err) => {
+                const { name, dob, type, notes, playerCode } = player;
+
+                // Check for unique player code in DB (excluding current player if we were updating, but here we delete and re-insert so just check global uniqueness)
+                // However, since we deleted all players for this team, we only need to check against OTHER teams.
+                // But wait, we already deleted players for THIS team. So global check is fine.
+                
+                db.get("SELECT id FROM players WHERE player_code = ?", [playerCode], (err, row) => {
                     if (err) {
-                      console.error("Error inserting player:", err.message);
-                      reject(err);
-                    } else {
-                      resolve();
+                        reject(err);
+                        return;
                     }
-                  }
-                );
+                    if (row) {
+                        reject(new Error(`Mã cầu thủ '${playerCode}' đã tồn tại trong hệ thống.`));
+                        return;
+                    }
+
+                    db.run(
+                      `INSERT INTO players (team_id, name, dob, type, notes, player_code) VALUES (?, ?, ?, ?, ?, ?)`,
+                      [teamId, name, dob, type, notes, playerCode],
+                      (err) => {
+                        if (err) {
+                          console.error("Error inserting player:", err.message);
+                          reject(err);
+                        } else {
+                          resolve();
+                        }
+                      }
+                    );
+                });
               });
             }
             res
@@ -358,7 +402,7 @@ router.put("/:id", async (req, res) => {
           } catch (err) {
             res
               .status(500)
-              .json({ error: "An error occurred while updating players." });
+              .json({ error: err.message || "An error occurred while updating players." });
           }
         })();
       });

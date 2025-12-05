@@ -23,42 +23,42 @@ const Navbar = () => {
       feature: "view_teams",
     },
     {
+      key: "schedules",
+      label: "Lịch thi đấu",
+      to: "/admin/schedules",
+      feature: "manage_schedules",
+    },
+    {
+      key: "record-result",
+      label: "Ghi kết quả",
+      to: "/record-result",
+      feature: "record_match_results",
+    },
+    {
       key: "player-lookup",
       label: "Tra cứu cầu thủ",
       to: "/player-lookup",
       feature: "view_players",
     },
     {
-      key: "leaderboards",
+      key: "leaderboard",
+      label: "Bảng xếp hạng",
       type: "dropdown",
-      label: "BXH",
       feature: "view_leaderboards",
       children: [
         {
           key: "team-leaderboard",
-          label: "BXH Đội",
+          label: "Bảng xếp hạng đội",
           to: "/team-leaderboard",
           feature: "view_leaderboards",
         },
         {
-          key: "top-scorer",
-          label: "Vua phá lưới",
+          key: "scorer-leaderboard",
+          label: "Bảng xếp hạng ghi bàn",
           to: "/top-scorer-leaderboard",
           feature: "view_leaderboards",
         },
       ],
-    },
-    {
-      key: "users",
-      label: "Quản lý người dùng",
-      to: "/admin/users",
-      feature: "manage_users",
-    },
-    {
-      key: "schedules",
-      label: "Lịch thi đấu",
-      to: "/admin/schedules",
-      feature: "manage_schedules",
     },
     {
       key: "settings",
@@ -67,10 +67,10 @@ const Navbar = () => {
       feature: "manage_settings",
     },
     {
-      key: "record-result",
-      label: "Ghi kết quả",
-      to: "/record-result",
-      feature: "record_match_results",
+      key: "users",
+      label: "Quản lý người dùng",
+      to: "/admin/users",
+      feature: "manage_users",
     },
   ];
 
@@ -115,7 +115,7 @@ const Navbar = () => {
     <nav className="navbar">
       <div className="navbar-left">
         <NavLink className="navbar-brand" to="/">
-          TRANG CHỦ
+          Trang chủ
         </NavLink>
       </div>
       <div className="navbar-center">
@@ -134,7 +134,7 @@ const Navbar = () => {
                     onClick={() => toggleDropdown(item.key)}
                     style={{ cursor: "pointer" }}
                   >
-                    {item.label}
+                    {item.label} <span style={{ fontSize: "0.7em", marginLeft: "4px" }}>▼</span>
                   </span>
                   <div className={`dropdown-content ${isOpen ? "show" : ""}`}>
                     {item.children?.map((child) => (

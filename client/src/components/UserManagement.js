@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import axios from "axios";
 import "./AdminPanels.css";
-import { FaUsersCog, FaTrash, FaUserShield, FaSyncAlt } from "react-icons/fa";
+import { FaUsersCog, FaTrash, FaUserShield, FaSyncAlt, FaEdit, FaEye } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 import { ROLE_OPTIONS, ROLE_LABELS, resolveRole, ROLES } from "../utils/roles";
 import {
@@ -23,6 +23,7 @@ const UserManagement = () => {
   );
   const [permissionsDirty, setPermissionsDirty] = useState(false);
   const [permissionsSaving, setPermissionsSaving] = useState(false);
+  const [editingUser, setEditingUser] = useState(null); // { id, username, fullName, email, dob, position, newPassword }
 
   const loadUsers = useCallback(async () => {
     if (!canManageUsers) {
@@ -159,6 +160,38 @@ const UserManagement = () => {
     }
   };
 
+  const handleUpdateUserInfo = async () => {
+    if (!editingUser) {
+      return;
+    }
+    
+    setError("");
+    setToast("");
+    
+    try {
+      // Update user information
+      await axios.put(`/api/users/${editingUser.id}`, {
+        fullName: editingUser.fullName,
+        email: editingUser.email,
+        dob: editingUser.dob,
+        position: editingUser.position,
+      });
+      
+      // Update password if provided
+      if (editingUser.newPassword && editingUser.newPassword.trim().length > 0) {
+        await axios.put(`/api/users/${editingUser.id}/password`, {
+          newPassword: editingUser.newPassword,
+        });
+      }
+      
+      setToast(`Đã cập nhật thông tin cho ${editingUser.username}.`);
+      setEditingUser(null);
+      loadUsers(); // Reload user list
+    } catch (err) {
+      setError(err?.response?.data?.message || "Không thể cập nhật thông tin người dùng.");
+    }
+  };
+
   const { totalUsers, adminUsers, normalUsers, distinctRoles } = useMemo(() => {
     const normalizedRoles = users.map((item) => resolveRole(item.role));
     const total = normalizedRoles.length;
@@ -239,36 +272,7 @@ const UserManagement = () => {
           </div>
         </header>
 
-        <ul className="admin-summary" role="list">
-          <li className="admin-summary-item">
-            <span className="admin-summary-label">Tổng tài khoản</span>
-            <strong className="admin-summary-value">{totalUsers}</strong>
-            <span className="admin-summary-hint">
-              Số lượng người dùng hiện có
-            </span>
-          </li>
-          <li className="admin-summary-item">
-            <span className="admin-summary-label">Quản trị viên</span>
-            <strong className="admin-summary-value">{adminUsers}</strong>
-            <span className="admin-summary-hint">
-              Số tài khoản có quyền admin
-            </span>
-          </li>
-          <li className="admin-summary-item">
-            <span className="admin-summary-label">Người dùng chuẩn</span>
-            <strong className="admin-summary-value">{normalUsers}</strong>
-            <span className="admin-summary-hint">
-              Bao gồm cầu thủ & cộng tác viên
-            </span>
-          </li>
-          <li className="admin-summary-item">
-            <span className="admin-summary-label">Loại quyền hạn</span>
-            <strong className="admin-summary-value">{distinctRoles}</strong>
-            <span className="admin-summary-hint">
-              Số vai trò đang được sử dụng
-            </span>
-          </li>
-        </ul>
+
 
         {error && (
           <div
@@ -350,17 +354,37 @@ const UserManagement = () => {
                           </select>
                         </td>
                         <td>
-                          <button
-                            type="button"
-                            className="admin-btn is-danger is-icon admin-icon-btn"
-                            onClick={() =>
-                              handleDeleteUser(account.id, account.username)
-                            }
-                            disabled={isLocked}
-                            aria-label={`Xóa người dùng ${account.username}`}
-                          >
-                            <FaTrash />
-                          </button>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button
+                              type="button"
+                              className="admin-btn is-primary is-icon admin-icon-btn"
+                              onClick={() => setEditingUser({ 
+                                id: account.id, 
+                                username: account.username,
+                                fullName: account.fullName || '',
+                                email: account.email || '',
+                                dob: account.dob || '',
+                                position: account.position || '',
+                                newPassword: '' 
+                              })}
+                              aria-label={`Xem/Sửa thông tin ${account.username}`}
+                              title="Xem/Sửa thông tin"
+                            >
+                              <FaEdit />
+                            </button>
+                            <button
+                              type="button"
+                              className="admin-btn is-danger is-icon admin-icon-btn"
+                              onClick={() =>
+                                handleDeleteUser(account.id, account.username)
+                              }
+                              disabled={isLocked}
+                              aria-label={`Xóa người dùng ${account.username}`}
+                              title="Xóa người dùng"
+                            >
+                              <FaTrash />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -443,6 +467,259 @@ const UserManagement = () => {
             )}
           </div>
         </section>
+
+        {/* Edit User Modal */}
+        {editingUser && (
+          <div 
+            className="modal-overlay" 
+            onClick={() => setEditingUser(null)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+              padding: '1rem'
+            }}
+          >
+            <div 
+              className="modal-content"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'white',
+                borderRadius: '12px',
+                maxWidth: '500px',
+                width: '100%',
+                boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)'
+              }}
+            >
+              <div style={{
+                padding: '1.25rem 1.5rem',
+                borderBottom: '2px solid #e1e8ed',
+                background: '#f8f9fb'
+              }}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#1a2332' }}>
+                  Thông tin người dùng
+                </h3>
+              </div>
+              
+              <div style={{ padding: '1.5rem' }}>
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <label style={{
+                    display: 'block',
+                    fontWeight: 600,
+                    color: '#2c3e50',
+                    fontSize: '0.85rem',
+                    marginBottom: '0.5rem'
+                  }}>
+                    Tên đăng nhập
+                  </label>
+                  <input
+                    type="text"
+                    value={editingUser.username}
+                    disabled
+                    style={{
+                      width: '100%',
+                      padding: '0.625rem 0.875rem',
+                      border: '2px solid #e1e8ed',
+                      borderRadius: '6px',
+                      fontSize: '0.9rem',
+                      background: '#f0f3f7',
+                      color: '#7f8c9a',
+                      cursor: 'not-allowed'
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <label style={{
+                    display: 'block',
+                    fontWeight: 600,
+                    color: '#2c3e50',
+                    fontSize: '0.85rem',
+                    marginBottom: '0.5rem'
+                  }}>
+                    Họ và tên
+                  </label>
+                  <input
+                    type="text"
+                    value={editingUser.fullName}
+                    onChange={(e) => setEditingUser({ ...editingUser, fullName: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.625rem 0.875rem',
+                      border: '2px solid #e1e8ed',
+                      borderRadius: '6px',
+                      fontSize: '0.9rem',
+                      background: '#fafbfc',
+                      color: '#1a2332'
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <label style={{
+                    display: 'block',
+                    fontWeight: 600,
+                    color: '#2c3e50',
+                    fontSize: '0.85rem',
+                    marginBottom: '0.5rem'
+                  }}>
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={editingUser.email}
+                    onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.625rem 0.875rem',
+                      border: '2px solid #e1e8ed',
+                      borderRadius: '6px',
+                      fontSize: '0.9rem',
+                      background: '#fafbfc',
+                      color: '#1a2332'
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      fontWeight: 600,
+                      color: '#2c3e50',
+                      fontSize: '0.85rem',
+                      marginBottom: '0.5rem'
+                    }}>
+                      Ngày sinh
+                    </label>
+                    <input
+                      type="date"
+                      value={editingUser.dob ? editingUser.dob.split('T')[0] : ''}
+                      onChange={(e) => setEditingUser({ ...editingUser, dob: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '0.625rem 0.875rem',
+                        border: '2px solid #e1e8ed',
+                        borderRadius: '6px',
+                        fontSize: '0.9rem',
+                        background: '#fafbfc',
+                        color: '#1a2332'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      fontWeight: 600,
+                      color: '#2c3e50',
+                      fontSize: '0.85rem',
+                      marginBottom: '0.5rem'
+                    }}>
+                      Vai trò
+                    </label>
+                    <input
+                      type="text"
+                      value={editingUser.position || ''}
+                      onChange={(e) => setEditingUser({ ...editingUser, position: e.target.value })}
+                      placeholder="Vai trò trong giải đấu"
+                      style={{
+                        width: '100%',
+                        padding: '0.625rem 0.875rem',
+                        border: '2px solid #e1e8ed',
+                        borderRadius: '6px',
+                        fontSize: '0.9rem',
+                        background: '#fafbfc',
+                        color: '#1a2332'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <hr style={{ border: 'none', borderTop: '1px solid #e1e8ed', margin: '1.5rem 0' }} />
+
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <label style={{
+                    display: 'block',
+                    fontWeight: 600,
+                    color: '#2c3e50',
+                    fontSize: '0.85rem',
+                    marginBottom: '0.5rem'
+                  }}>
+                    Đổi mật khẩu
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Nhập mật khẩu mới..."
+                    value={editingUser.newPassword}
+                    onChange={(e) => setEditingUser({ ...editingUser, newPassword: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.625rem 0.875rem',
+                      border: '2px solid #e1e8ed',
+                      borderRadius: '6px',
+                      fontSize: '0.9rem',
+                      background: '#fafbfc'
+                    }}
+                  />
+                  <div style={{
+                    marginTop: '0.375rem',
+                    fontSize: '0.75rem',
+                    color: '#7f8c9a'
+                  }}>
+                    Để trống nếu không muốn đổi mật khẩu
+                  </div>
+                </div>
+              </div>
+
+              <div style={{
+                padding: '1rem 1.5rem',
+                borderTop: '1px solid #e1e8ed',
+                display: 'flex',
+                gap: '0.75rem',
+                justifyContent: 'flex-end'
+              }}>
+                <button
+                  onClick={() => setEditingUser(null)}
+                  style={{
+                    padding: '0.625rem 1.25rem',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontWeight: 600,
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    background: '#e1e8ed',
+                    color: '#1a2332'
+                  }}
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleUpdateUserInfo}
+                  style={{
+                    padding: '0.625rem 1.25rem',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontWeight: 600,
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    background: 'linear-gradient(135deg, #4a90e2 0%, #357abd 100%)',
+                    color: 'white'
+                  }}
+                >
+                  Cập nhật
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

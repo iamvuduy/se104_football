@@ -10,9 +10,11 @@ const TeamList = () => {
   const [error, setError] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [status, setStatus] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const { token, canAccessFeature } = useAuth();
   const canManageTeams = canAccessFeature("manage_teams");
   const canRegisterTeams = canAccessFeature("register_team");
+  const TEAMS_PER_PAGE = 6;
 
   const fetchTeams = useCallback(async () => {
     if (!token) {
@@ -48,6 +50,20 @@ const TeamList = () => {
       return codeA.localeCompare(codeB, "vi", { numeric: true });
     });
   }, [teams]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(sortedTeams.length / TEAMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * TEAMS_PER_PAGE;
+  const endIndex = startIndex + TEAMS_PER_PAGE;
+  const paginatedTeams = sortedTeams.slice(startIndex, endIndex);
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   const handleDeleteTeam = async (team) => {
     if (!canManageTeams || !team?.id) return;
@@ -119,7 +135,7 @@ const TeamList = () => {
           >
             {loading ? "Đang tải..." : "Tải lại"}
           </button>
-          {canRegisterTeams && (
+          {canManageTeams && (
             <Link to="/register-team" className="team-action secondary">
               Thêm đội mới
             </Link>
@@ -127,12 +143,7 @@ const TeamList = () => {
         </div>
       </header>
 
-      {!canManageTeams && canRegisterTeams && (
-        <p className="team-help-text">
-          Bạn muốn đăng ký đội bóng mới? Chọn "Thêm đội mới" để gửi thông tin
-          cho ban tổ chức.
-        </p>
-      )}
+
 
       {status && (
         <div
@@ -155,61 +166,101 @@ const TeamList = () => {
             <p>Chưa có đội bóng nào được hiển thị trong hệ thống.</p>
           </div>
         ) : (
-          <ul className="team-list">
-            {sortedTeams.map((team) => {
-              const displayName = team.name?.trim() || "Đội chưa đặt tên";
-              const displayCode = team.team_code?.trim() || "CHUA_CO_MA";
-              const stadium = team.home_stadium?.trim() || "Đang cập nhật";
-              const playerCount = team.player_count || 0;
-              const avatarLetter = displayName.charAt(0).toUpperCase();
+          <>
+            <ul className="team-list">
+              {paginatedTeams.map((team) => {
+                const displayName = team.name?.trim() || "Đội chưa đặt tên";
+                const displayCode = team.team_code?.trim() || "CHUA_CO_MA";
+                const stadium = team.home_stadium?.trim() || "Đang cập nhật";
+                const playerCount = team.player_count || 0;
+                const avatarLetter = displayName.charAt(0).toUpperCase();
 
-              return (
-                <li key={team.id} className="team-list-item">
-                  <div className="team-list-avatar" aria-hidden="true">
-                    {avatarLetter}
-                  </div>
-                  <div className="team-list-content">
-                    <div className="team-list-heading">
-                      <h3>
-                        <span className="team-list-code">{displayCode}</span>{" "}
-                        {displayName}
-                      </h3>
-                      <span className="team-list-pill">
-                        {playerCount} cầu thủ
-                      </span>
+                return (
+                  <li key={team.id} className="team-list-item">
+                    <div className="team-list-avatar" aria-hidden="true">
+                      {avatarLetter}
                     </div>
-                    <p className="team-list-sub">Sân nhà: {stadium}</p>
-                  </div>
-                  <div className="team-list-actions">
-                    <Link
-                      to={`/teams/${team.id}`}
-                      className="team-action primary"
-                    >
-                      Xem chi tiết
-                    </Link>
-                    {canManageTeams && (
-                      <>
-                        <Link
-                          to={`/teams/${team.id}/edit`}
-                          className="team-action secondary"
-                        >
-                          Chỉnh sửa
-                        </Link>
-                        <button
-                          type="button"
-                          className="team-action danger"
-                          onClick={() => handleDeleteTeam(team)}
-                          disabled={deletingId === team.id}
-                        >
-                          {deletingId === team.id ? "Đang xoá..." : "Xoá"}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+                    <div className="team-list-content">
+                      <div className="team-list-heading">
+                        <h3>
+                          <span className="team-list-code">{displayCode}</span>{" "}
+                          {displayName}
+                        </h3>
+                        <span className="team-list-pill">
+                          {playerCount} cầu thủ
+                        </span>
+                      </div>
+                      <p className="team-list-sub">Sân nhà: {stadium}</p>
+                    </div>
+                    <div className="team-list-actions">
+                      <Link
+                        to={`/teams/${team.id}`}
+                        className="team-action primary"
+                      >
+                        Xem chi tiết
+                      </Link>
+                      {canManageTeams && (
+                        <>
+                          <Link
+                            to={`/teams/${team.id}/edit`}
+                            className="team-action secondary"
+                          >
+                            Chỉnh sửa
+                          </Link>
+                          <button
+                            type="button"
+                            className="team-action danger"
+                            onClick={() => handleDeleteTeam(team)}
+                            disabled={deletingId === team.id}
+                          >
+                            {deletingId === team.id ? "Đang xoá..." : "Xoá"}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="team-pagination">
+                <button
+                  className="team-pagination-btn"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  ← Trước
+                </button>
+                
+                <div className="team-pagination-pages">
+                  {[...Array(totalPages)].map((_, index) => {
+                    const pageNum = index + 1;
+                    return (
+                      <button
+                        key={pageNum}
+                        className={`team-pagination-page ${
+                          currentPage === pageNum ? "active" : ""
+                        }`}
+                        onClick={() => handlePageChange(pageNum)}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  className="team-pagination-btn"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  Sau →
+                </button>
+              </div>
+            )}
+          </>
         )}
       </section>
     </div>

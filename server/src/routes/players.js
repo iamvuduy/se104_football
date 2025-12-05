@@ -8,6 +8,7 @@ router.get("/", (req, res) => {
         SELECT
             p.id,
             p.name AS playerName,
+            p.player_code AS playerCode,
             p.type AS playerType,
             t.id AS teamId,
             t.name AS teamName,
@@ -15,7 +16,7 @@ router.get("/", (req, res) => {
         FROM players p
         JOIN teams t ON p.team_id = t.id
         LEFT JOIN goals g ON g.player_id = p.id
-        GROUP BY p.id, p.name, p.type, t.id, t.name
+        GROUP BY p.id, p.name, p.player_code, p.type, t.id, t.name
     `;
 
   db.all(sql, [], (err, players) => {

@@ -27,7 +27,7 @@
 /* Header Styling */
 .registration-form-card h3 {
   color: #1a2332;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -55,8 +55,8 @@
 .form-select {
   border: 2px solid #e1e8ed;
   border-radius: 8px;
-  padding: 0.625rem 0.875rem;
-  font-size: 0.95rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
   transition: all 0.3s ease;
   background-color: #fafbfc;
 }
@@ -96,12 +96,12 @@
 }
 
 .player-table thead th {
-  color: #ffffff;
+  color: #1a2332;
   font-weight: 600;
   text-transform: uppercase;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   letter-spacing: 0.5px;
-  padding: 1rem 0.75rem;
+  padding: 0.75rem 0.5rem;
   border: none;
   white-space: nowrap;
 }
@@ -120,15 +120,19 @@
 }
 
 .player-table tbody td {
-  padding: 0.75rem;
+  padding: 0.625rem 0.5rem;
   vertical-align: middle;
+  font-size: 0.85rem;
 }
 
 .player-table tbody td .form-control,
 .player-table tbody td .form-select {
   border-width: 1px;
-  font-size: 0.9rem;
-  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  padding: 0.4rem 1.5rem 0.4rem 0.5rem;
+  line-height: 1.4;
+  height: auto;
+  min-height: 32px;
 }
 
 .player-table tbody td:first-child {
@@ -382,4 +386,93 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 .form-select:focus-visible {
   outline: 2px solid #4a90e2;
   outline-offset: 2px;
+}
+
+/* Toast Notifications */
+.toast-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  animation: slideInRight 0.3s ease-out forwards;
+  max-width: 350px;
+}
+
+.toast-success {
+  background-color: #2ecc71;
+  border-left: 5px solid #27ae60;
+}
+
+.toast-error {
+  background-color: #e74c3c;
+  border-left: 5px solid #c0392b;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Pagination Controls */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-top: 1px solid #e8eef5;
+}
+
+.pagination-btn {
+  min-width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e1e8ed;
+  background: #ffffff;
+  color: #4a5568;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0 0.75rem;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #4a90e2;
+  color: #ffffff;
+  border-color: #4a90e2;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: #f8f9fb;
+}
+
+.pagination-btn.active {
+  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+  color: #ffffff;
+  border-color: #4a90e2;
+  box-shadow: 0 2px 8px rgba(74, 144, 226, 0.2);
 }

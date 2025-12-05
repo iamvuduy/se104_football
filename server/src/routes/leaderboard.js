@@ -6,7 +6,7 @@ const { loadSettings } = require("../services/settingsService");
 // GET /api/leaderboard/teams - Get team leaderboard
 router.get("/teams", async (req, res) => {
   try {
-    const { asOf } = req.query || {};
+    const { asOf, round } = req.query || {};
     let asOfDate = null;
 
     if (asOf) {
@@ -30,12 +30,34 @@ router.get("/teams", async (req, res) => {
     });
 
     const matches = await new Promise((resolve, reject) => {
-      let sql = "SELECT * FROM match_results";
+      let sql = `
+        SELECT mr.* 
+        FROM match_results mr
+      `;
       const params = [];
+      const conditions = [];
 
       if (asOfDate) {
-        sql += " WHERE date(match_date) <= date(?)";
+        conditions.push("date(mr.match_date) <= date(?)");
         params.push(asOfDate);
+      }
+
+      if (round) {
+        // Join with schedules to get round info
+        sql = `
+          SELECT mr.* 
+          FROM match_results mr
+          LEFT JOIN schedules s ON (
+            (mr.team1_id = s.team1_id AND mr.team2_id = s.team2_id) OR
+            (mr.team1_id = s.team2_id AND mr.team2_id = s.team1_id)
+          )
+        `;
+        conditions.push("s.round = ?");
+        params.push(round);
+      }
+
+      if (conditions.length > 0) {
+        sql += " WHERE " + conditions.join(" AND ");
       }
 
       db.all(sql, params, (err, rows) => {
@@ -107,6 +129,7 @@ router.get("/teams", async (req, res) => {
         points: 0,
         goalDiff: 0,
         goalsFor: 0,
+        awayGoals: 0,
       };
       team1Head.points += team1Points;
       team1Head.goalDiff += score1 - score2;
@@ -117,10 +140,12 @@ router.get("/teams", async (req, res) => {
         points: 0,
         goalDiff: 0,
         goalsFor: 0,
+        awayGoals: 0,
       };
       team2Head.points += team2Points;
       team2Head.goalDiff += score2 - score1;
       team2Head.goalsFor += score2;
+      team2Head.awayGoals += score2;
       team2Stats.headToHead[match.team1_id] = team2Head;
     });
 
@@ -161,15 +186,20 @@ router.get("/teams", async (req, res) => {
               points: 0,
               goalDiff: 0,
               goalsFor: 0,
+              awayGoals: 0,
             };
             const bRecord = b.headToHead?.[a.id] || {
               points: 0,
               goalDiff: 0,
               goalsFor: 0,
+              awayGoals: 0,
             };
             diff = compareDesc(aRecord.points, bRecord.points);
             if (diff === 0) {
               diff = compareDesc(aRecord.goalDiff, bRecord.goalDiff);
+            }
+            if (diff === 0) {
+              diff = compareDesc(aRecord.awayGoals, bRecord.awayGoals);
             }
             if (diff === 0) {
               diff = compareDesc(aRecord.goalsFor, bRecord.goalsFor);
@@ -226,6 +256,7 @@ router.get("/top-scorers", (req, res) => {
         SELECT
             p.id,
             p.name as player_name,
+            p.player_code,
             t.name as team_name,
             p.type as player_type,
             COUNT(g.id) as goals

@@ -1,17 +1,37 @@
 
-/* Notification Modal - Modern Alert */
+/* Notification Modal - Modern Alert with Dark Overlay */
+
+/* Overlay - Darker background */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.3s ease;
+}
+
+.modal-overlay.visible {
+  opacity: 1;
+}
+
 .notification-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  animation: fadeIn 0.2s ease;
+  animation: fadeIn 0.3s ease;
 }
 
 @keyframes fadeIn {
@@ -23,14 +43,16 @@
   }
 }
 
+/* Modal Box */
 .notification-modal {
   background: white;
   border-radius: 16px;
-  padding: 2rem;
+  padding: 2.5rem;
   max-width: 500px;
   width: 90%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
   animation: slideUp 0.3s ease;
+  text-align: center;
 }
 
 @keyframes slideUp {
@@ -44,6 +66,31 @@
   }
 }
 
+/* Modal Icon */
+.modal-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 1.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-modal.success .modal-icon {
+  background: linear-gradient(135deg, #27ae60, #2ecc71);
+}
+
+.notification-modal.error .modal-icon {
+  background: linear-gradient(135deg, #e74c3c, #ec7063);
+}
+
+.modal-icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+/* Border Top */
 .notification-modal.success {
   border-top: 4px solid #27ae60;
 }
@@ -52,6 +99,53 @@
   border-top: 4px solid #e74c3c;
 }
 
+/* Title */
+.modal-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.notification-modal.success .modal-title {
+  color: #27ae60;
+}
+
+.notification-modal.error .modal-title {
+  color: #e74c3c;
+}
+
+/* Message */
+.modal-message {
+  color: #5a6c7d;
+  font-size: 1rem;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+/* OK Button */
+.modal-ok-button {
+  width: 100%;
+  padding: 1rem;
+  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.modal-ok-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(74, 144, 226, 0.4);
+}
+
+.modal-ok-button:active {
+  transform: translateY(0);
+}
+
+/* Legacy support */
 .notification-modal h3 {
   font-size: 1.5rem;
   font-weight: 700;
