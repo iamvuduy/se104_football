@@ -310,7 +310,7 @@ se104_football/
 | Xem Dashboard      |      ✅      |        ✅        |      ✅      |   ✅   |
 | Xem đội bóng       |      ✅      |        ✅        |      ✅      |   ✅   |
 | Đăng ký đội        |      ✅      |        ✅        |      ✅      |   ❌   |
-| Sửa/Xóa đội        |      ✅      |        ✅        | Chỉ đội mình |   ❌   |
+| Sửa/Xóa đội        |      ✅      |        ✅        |      ❌      |   ❌   |
 | Quản lý lịch       |      ✅      |        ✅        |      ❌      |   ❌   |
 | Ghi nhận kết quả   |      ✅      |        ✅        |      ❌      |   ❌   |
 | Lập báo cáo        |      ❌      |        ✅        |      ❌      |   ❌   |
