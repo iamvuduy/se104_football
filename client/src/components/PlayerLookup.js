@@ -76,6 +76,10 @@ const PlayerLookup = () => {
   // Filter states
   const [selectedTeam, setSelectedTeam] = useState("");
   const [selectedPlayerType, setSelectedPlayerType] = useState("");
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Load all players and teams on mount
   useEffect(() => {
@@ -148,6 +152,7 @@ const PlayerLookup = () => {
     setSelectedTeam("");
     setSelectedPlayerType("");
     setQuery("");
+    setCurrentPage(1);
   };
 
   const hasActiveFilters = selectedTeam || selectedPlayerType || query.trim();
@@ -225,16 +230,16 @@ const PlayerLookup = () => {
         {!loading && (
           <div className="player-lookup-result">
             <div className="player-lookup-result-header">
-              <div>
-                <h2>Danh sách cầu thủ</h2>
-                <p>
+              <h2>
+                Danh sách cầu thủ
+                <span className="player-count">
                   {filteredPlayers.length > 0
                     ? `${filteredPlayers.length} cầu thủ ${
-                        hasActiveFilters ? "phù hợp với bộ lọc" : "trong hệ thống"
+                        hasActiveFilters ? "phù hợp" : "trong hệ thống"
                       }`
-                    : "Không có cầu thủ nào phù hợp"}
-                </p>
-              </div>
+                    : "Không có cầu thủ nào"}
+                </span>
+              </h2>
             </div>
 
             {filteredPlayers.length === 0 ? (
@@ -247,6 +252,7 @@ const PlayerLookup = () => {
                 </p>
               </div>
             ) : (
+              <>
               <div className="player-lookup-table-wrapper">
                 <table className="player-lookup-table">
                   <thead>
@@ -260,9 +266,11 @@ const PlayerLookup = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredPlayers.map((player, index) => (
+                    {filteredPlayers
+                      .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                      .map((player, index) => (
                       <tr key={player.id || `${player.playerName}-${index}`}>
-                        <td>{index + 1}</td>
+                        <td>{(currentPage - 1) * itemsPerPage + index + 1}</td>
                         <td>{player.playerCode || '-'}</td>
                         <td>{player.playerName}</td>
                         <td>{player.teamName}</td>
@@ -273,6 +281,40 @@ const PlayerLookup = () => {
                   </tbody>
                 </table>
               </div>
+              
+              {/* Pagination */}
+              {Math.ceil(filteredPlayers.length / itemsPerPage) > 1 && (
+                <div className="player-pagination">
+                  <button 
+                    className="pagination-btn" 
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                  >
+                    &lt;
+                  </button>
+                  
+                  <div className="pagination-pages">
+                    {Array.from({ length: Math.ceil(filteredPlayers.length / itemsPerPage) }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        className={`pagination-page ${currentPage === page ? 'active' : ''}`}
+                        onClick={() => setCurrentPage(page)}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button 
+                    className="pagination-btn" 
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredPlayers.length / itemsPerPage)))}
+                    disabled={currentPage === Math.ceil(filteredPlayers.length / itemsPerPage)}
+                  >
+                    &gt;
+                  </button>
+                </div>
+              )}
+              </>
             )}
           </div>
         )}

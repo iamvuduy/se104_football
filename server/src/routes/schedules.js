@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../database");
+const admin = require("../middleware/admin");
 
 // Get all schedules
 router.get("/", (req, res) => {
@@ -76,7 +77,7 @@ router.get("/:id", (req, res) => {
 });
 
 // Create a new schedule
-router.post("/", (req, res) => {
+router.post("/", admin, (req, res) => {
   const { round, matchOrder, team1_id, team2_id, date, time, stadium } =
     req.body;
   const team1Id = Number(team1_id);
@@ -127,7 +128,10 @@ router.post("/", (req, res) => {
               if (existingMatch) {
                 return res
                   .status(400)
-                  .json({ error: "Cặp đấu này (Đội 1 vs Đội 2) đã tồn tại trong giải đấu." });
+                  .json({
+                    error:
+                      "Cặp đấu này (Đội 1 vs Đội 2) đã tồn tại trong giải đấu.",
+                  });
               }
 
               // Check if either team already has a match in this round
@@ -141,7 +145,10 @@ router.post("/", (req, res) => {
                   if (teamInRound) {
                     return res
                       .status(400)
-                      .json({ error: "Một trong hai đội đã có lịch thi đấu trong vòng này." });
+                      .json({
+                        error:
+                          "Một trong hai đội đã có lịch thi đấu trong vòng này.",
+                      });
                   }
 
                   // Use provided matchId or fallback to auto-generated format
@@ -159,7 +166,9 @@ router.post("/", (req, res) => {
                       if (existingCode) {
                         return res
                           .status(400)
-                          .json({ error: `Mã trận đấu '${matchCode}' đã tồn tại.` });
+                          .json({
+                            error: `Mã trận đấu '${matchCode}' đã tồn tại.`,
+                          });
                       }
 
                       // Default matchOrder to 1 if not provided
@@ -204,7 +213,7 @@ router.post("/", (req, res) => {
 });
 
 // Update a schedule
-router.put("/:id", (req, res) => {
+router.put("/:id", admin, (req, res) => {
   const { round, matchOrder, team1_id, team2_id, date, time, stadium } =
     req.body;
   const team1Id = Number(team1_id);
@@ -255,7 +264,10 @@ router.put("/:id", (req, res) => {
               if (existingMatch) {
                 return res
                   .status(400)
-                  .json({ error: "Cặp đấu này (Đội 1 vs Đội 2) đã tồn tại trong giải đấu." });
+                  .json({
+                    error:
+                      "Cặp đấu này (Đội 1 vs Đội 2) đã tồn tại trong giải đấu.",
+                  });
               }
 
               // Check if either team already has a match in this round (excluding current match)
@@ -269,7 +281,10 @@ router.put("/:id", (req, res) => {
                   if (teamInRound) {
                     return res
                       .status(400)
-                      .json({ error: "Một trong hai đội đã có lịch thi đấu trong vòng này." });
+                      .json({
+                        error:
+                          "Một trong hai đội đã có lịch thi đấu trong vòng này.",
+                      });
                   }
 
                   // Use provided matchId or fallback to auto-generated format
@@ -287,7 +302,9 @@ router.put("/:id", (req, res) => {
                       if (existingCode) {
                         return res
                           .status(400)
-                          .json({ error: `Mã trận đấu '${matchCode}' đã tồn tại.` });
+                          .json({
+                            error: `Mã trận đấu '${matchCode}' đã tồn tại.`,
+                          });
                       }
 
                       // Default matchOrder to 1 if not provided
@@ -335,7 +352,7 @@ router.put("/:id", (req, res) => {
 });
 
 // Delete a schedule
-router.delete("/:id", (req, res) => {
+router.delete("/:id", admin, (req, res) => {
   const scheduleId = req.params.id;
 
   // First, get the schedule details to find the match_code
@@ -346,7 +363,7 @@ router.delete("/:id", (req, res) => {
       if (err) {
         return res.status(500).json({ error: err.message });
       }
-      
+
       if (!schedule) {
         return res.status(404).json({ error: "Lịch thi đấu không tồn tại." });
       }
@@ -357,25 +374,32 @@ router.delete("/:id", (req, res) => {
         `SELECT id FROM match_results 
          WHERE (team1_id = ? AND team2_id = ?) 
             OR (team1_id = ? AND team2_id = ?)`,
-        [schedule.team1_id, schedule.team2_id, schedule.team2_id, schedule.team1_id],
+        [
+          schedule.team1_id,
+          schedule.team2_id,
+          schedule.team2_id,
+          schedule.team1_id,
+        ],
         (err, matchResults) => {
           if (err) {
             return res.status(500).json({ error: err.message });
           }
 
           // Delete related goals first (CASCADE)
-          const matchResultIds = matchResults.map(mr => mr.id);
-          
+          const matchResultIds = matchResults.map((mr) => mr.id);
+
           if (matchResultIds.length > 0) {
-            const placeholders = matchResultIds.map(() => '?').join(',');
-            
+            const placeholders = matchResultIds.map(() => "?").join(",");
+
             // Delete goals related to these match results
             db.run(
               `DELETE FROM goals WHERE match_result_id IN (${placeholders})`,
               matchResultIds,
               (err) => {
                 if (err) {
-                  return res.status(500).json({ error: "Lỗi khi xóa bàn thắng: " + err.message });
+                  return res
+                    .status(500)
+                    .json({ error: "Lỗi khi xóa bàn thắng: " + err.message });
                 }
 
                 // Delete the match results
@@ -384,7 +408,11 @@ router.delete("/:id", (req, res) => {
                   matchResultIds,
                   (err) => {
                     if (err) {
-                      return res.status(500).json({ error: "Lỗi khi xóa kết quả trận đấu: " + err.message });
+                      return res
+                        .status(500)
+                        .json({
+                          error: "Lỗi khi xóa kết quả trận đấu: " + err.message,
+                        });
                     }
 
                     // Finally delete the schedule
@@ -398,7 +426,7 @@ router.delete("/:id", (req, res) => {
                         res.json({
                           message: "Đã xóa lịch thi đấu và dữ liệu liên quan",
                           changes: this.changes,
-                          deletedMatchResults: matchResults.length
+                          deletedMatchResults: matchResults.length,
                         });
                       }
                     );
@@ -418,7 +446,7 @@ router.delete("/:id", (req, res) => {
                 res.json({
                   message: "Đã xóa lịch thi đấu",
                   changes: this.changes,
-                  deletedMatchResults: 0
+                  deletedMatchResults: 0,
                 });
               }
             );

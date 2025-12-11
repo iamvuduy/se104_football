@@ -2,10 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./TeamRegistration.css";
-import {
-  FaCheckCircle,
-  FaExclamationCircle,
-} from "react-icons/fa";
+import { FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
 
 const TEAM_CODE_REGEX = /^FC\d{3}$/;
 
@@ -54,8 +51,6 @@ const EditTeam = () => {
 
   const endOfPlayersRef = useRef(null);
 
-
-
   useEffect(() => {
     const fetchTeamData = async () => {
       try {
@@ -70,10 +65,10 @@ const EditTeam = () => {
         const mappedPlayers = players.map((p) => {
           console.log("Player from DB:", p);
           console.log("p.player_code:", p.player_code);
-          return { 
-            ...p, 
+          return {
+            ...p,
             dob: p.dob.split("T")[0],
-            playerCode: p.player_code // Map player_code from DB to playerCode
+            playerCode: p.player_code, // Map player_code from DB to playerCode
           };
         });
         console.log("Mapped players:", mappedPlayers);
@@ -234,7 +229,7 @@ const EditTeam = () => {
 
     players.forEach((player, index) => {
       const playerError = {};
-      
+
       // Validate player code
       const code = (player.playerCode || "").trim();
       if (!code) {
@@ -246,7 +241,7 @@ const EditTeam = () => {
       } else {
         playerCodeSet.add(code);
       }
-      
+
       if (!player.name.trim()) {
         playerError.name = true;
         hasNameError = true;
@@ -364,7 +359,11 @@ const EditTeam = () => {
     <div className="registration-container">
       {toast && (
         <div className={`toast-notification toast-${toast.type}`}>
-          {toast.type === "success" ? <FaCheckCircle /> : <FaExclamationCircle />}
+          {toast.type === "success" ? (
+            <FaCheckCircle />
+          ) : (
+            <FaExclamationCircle />
+          )}
           {toast.message}
         </div>
       )}
@@ -442,7 +441,9 @@ const EditTeam = () => {
                         type="text"
                         name="playerCode"
                         className={`form-control ${
-                          errors.players?.[index]?.playerCode ? "is-invalid" : ""
+                          errors.players?.[index]?.playerCode
+                            ? "is-invalid"
+                            : ""
                         }`}
                         value={player.playerCode || ""}
                         onChange={(e) => handlePlayerChange(index, e)}
@@ -521,9 +522,18 @@ const EditTeam = () => {
             >
               + Thêm cầu thủ
             </button>
-            <button type="submit" className="btn btn-primary btn-lg">
-              Cập nhật đội bóng
-            </button>
+            <div className="d-flex gap-3">
+              <button
+                type="button"
+                className="btn btn-secondary btn-lg"
+                onClick={() => navigate("/teams")}
+              >
+                Hủy bỏ
+              </button>
+              <button type="submit" className="btn btn-primary btn-lg">
+                Cập nhật đội bóng
+              </button>
+            </div>
           </div>
         </form>
       </div>

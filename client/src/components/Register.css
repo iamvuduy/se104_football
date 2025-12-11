@@ -49,6 +49,46 @@
   margin-bottom: 2rem;
 }
 
+/* New Header Box Design */
+.auth-header-box {
+  background: linear-gradient(135deg, #f0f6ff 0%, #e8f0ff 100%);
+  border: 2px solid #d4e3f7;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2.5rem;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.auth-header-icon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.5rem;
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
+}
+
+.auth-header-content h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a2332;
+  margin: 0 0 0.5rem 0;
+}
+
+.auth-header-content p {
+  color: #556b7f;
+  font-size: 0.9rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
 .auth-form-card h2 {
   font-size: 1.75rem;
   font-weight: 700;

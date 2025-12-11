@@ -52,6 +52,23 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  // Fetch current user info from server (including team_id)
+  const fetchCurrentUser = useCallback(async () => {
+    try {
+      const response = await axios.get("/api/users/me");
+      if (response.data?.data) {
+        const userData = response.data.data;
+        setUser((prev) => ({
+          ...prev,
+          ...userData,
+          role: normalizeUserRole(userData).role,
+        }));
+      }
+    } catch (err) {
+      console.warn("Could not fetch current user:", err.message);
+    }
+  }, []);
+
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     if (storedToken) {
@@ -64,6 +81,8 @@ export const AuthProvider = ({ children }) => {
           "Authorization"
         ] = `Bearer ${storedToken}`;
         fetchPermissions();
+        // Also fetch current user info from server to get team_id
+        setTimeout(() => fetchCurrentUser(), 100);
       } else {
         localStorage.removeItem("token");
         setToken(null);
@@ -73,6 +92,15 @@ export const AuthProvider = ({ children }) => {
     }
     setLoading(false);
   }, []);
+
+  // Sync axios Authorization header whenever token changes
+  useEffect(() => {
+    if (token) {
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    } else {
+      delete axios.defaults.headers.common["Authorization"];
+    }
+  }, [token]);
 
   const login = async (username, password) => {
     try {
@@ -88,6 +116,7 @@ export const AuthProvider = ({ children }) => {
       setUser(normalizeUserRole(decodedUser));
       setIsAuthenticated(true);
       await fetchPermissions();
+      await fetchCurrentUser(); // Fetch full user info including team_id
       return { success: true };
     } catch (error) {
       let message = "Login failed. Please try again.";
@@ -163,6 +192,7 @@ export const AuthProvider = ({ children }) => {
     featurePermissions,
     canAccessFeature,
     refreshPermissions: fetchPermissions,
+    fetchCurrentUser,
   };
 
   if (loading) {

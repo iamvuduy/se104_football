@@ -23,7 +23,8 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
   }
   50% {
@@ -41,7 +42,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .top-scorer-page {
@@ -102,7 +105,7 @@
 }
 
 .ts-hero::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -50%;
   left: -50%;
@@ -208,6 +211,13 @@
   flex-wrap: wrap;
 }
 
+.ts-table-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
 .ts-table-header h3 {
   margin: 0;
   font-size: 1.1rem;
@@ -220,6 +230,67 @@
   color: #7f8c9a;
   font-weight: 500;
   font-size: 0.85rem;
+}
+
+/* Export Buttons */
+.ts-export-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.ts-export-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: none;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.ts-export-btn.success {
+  background: #28a745;
+  color: white;
+}
+
+.ts-export-btn.success:hover {
+  background: #218838;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.ts-export-btn.primary {
+  background: #4a90e2;
+  color: white;
+}
+
+.ts-export-btn.primary:hover {
+  background: #357abd;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+}
+
+.ts-export-btn.warning {
+  background: #ffc107;
+  color: #333;
+}
+
+.ts-export-btn.warning:hover {
+  background: #e0a800;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+}
+
+.ts-export-btn.danger {
+  background: #dc3545;
+  color: white;
+}
+
+.ts-export-btn.danger:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
 }
 
 /* Filter Buttons */
@@ -297,12 +368,24 @@
   animation: slideIn 0.4s ease-out both;
 }
 
-.ts-table tbody tr:nth-child(1) { animation-delay: 0.5s; }
-.ts-table tbody tr:nth-child(2) { animation-delay: 0.55s; }
-.ts-table tbody tr:nth-child(3) { animation-delay: 0.6s; }
-.ts-table tbody tr:nth-child(4) { animation-delay: 0.65s; }
-.ts-table tbody tr:nth-child(5) { animation-delay: 0.7s; }
-.ts-table tbody tr:nth-child(n+6) { animation-delay: 0.75s; }
+.ts-table tbody tr:nth-child(1) {
+  animation-delay: 0.5s;
+}
+.ts-table tbody tr:nth-child(2) {
+  animation-delay: 0.55s;
+}
+.ts-table tbody tr:nth-child(3) {
+  animation-delay: 0.6s;
+}
+.ts-table tbody tr:nth-child(4) {
+  animation-delay: 0.65s;
+}
+.ts-table tbody tr:nth-child(5) {
+  animation-delay: 0.7s;
+}
+.ts-table tbody tr:nth-child(n + 6) {
+  animation-delay: 0.75s;
+}
 
 .ts-table tbody tr:last-child {
   border-bottom: none;

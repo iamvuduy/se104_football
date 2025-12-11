@@ -47,11 +47,6 @@ export const FEATURE_DEFINITIONS = [
     description: "Lập và điều chỉnh lịch thi đấu.",
   },
   {
-    key: "manage_groups",
-    label: "Quản lý bảng đấu",
-    description: "Sắp xếp đội vào các bảng đấu.",
-  },
-  {
     key: "manage_settings",
     label: "Cài đặt giải đấu",
     description: "Điều chỉnh quy định chung của giải.",
@@ -60,6 +55,11 @@ export const FEATURE_DEFINITIONS = [
     key: "manage_users",
     label: "Quản lý người dùng",
     description: "Phân quyền và quản trị tài khoản.",
+  },
+  {
+    key: "create_reports",
+    label: "Lập báo cáo",
+    description: "Tạo, chỉnh sửa và chia sẻ báo cáo.",
   },
 ];
 
@@ -87,9 +87,9 @@ export const DEFAULT_PERMISSION_MATRIX = {
     view_leaderboards: true,
     record_match_results: false,
     manage_schedules: false,
-    manage_groups: false,
     manage_settings: false,
     manage_users: false,
+    create_reports: false,
   },
   [ROLES.TEAM_OWNER]: {
     view_dashboard: true,
@@ -101,38 +101,35 @@ export const DEFAULT_PERMISSION_MATRIX = {
     view_leaderboards: true,
     record_match_results: false,
     manage_schedules: false,
-    manage_groups: false,
     manage_settings: false,
     manage_users: false,
+    create_reports: false,
   },
   [ROLES.TOURNAMENT_ADMIN]: {
-    view_dashboard: true,
-    view_teams: true,
-    register_team: true,
-    manage_teams: true,
-    view_players: true,
-    view_match_results: true,
-    view_leaderboards: true,
-    record_match_results: true,
-    manage_schedules: true,
+    ...buildSystemAdminPermissions(),
     manage_groups: true,
-    manage_settings: true,
-    manage_users: false,
   },
-  [ROLES.SYSTEM_ADMIN]: buildSystemAdminPermissions(),
+  [ROLES.SYSTEM_ADMIN]: {
+    ...buildSystemAdminPermissions(),
+    manage_groups: true,
+  },
 };
 
 export const sanitizePermissionMatrix = (matrix) => {
   const result = {};
-  ROLE_ORDER.forEach((role) => {
+
+  // Include both standard roles and any custom roles in the matrix
+  const incomingKeys =
+    matrix && typeof matrix === "object" ? Object.keys(matrix) : [];
+  const allRoles = Array.from(new Set([...ROLE_ORDER, ...incomingKeys]));
+
+  allRoles.forEach((role) => {
     const defaults = DEFAULT_PERMISSION_MATRIX[role] || {};
     const incoming =
       matrix && typeof matrix[role] === "object" ? matrix[role] : {};
     const merged = {};
     FEATURE_DEFINITIONS.forEach((feature) => {
-      if (role === ROLES.SYSTEM_ADMIN) {
-        merged[feature.key] = true;
-      } else if (Object.prototype.hasOwnProperty.call(incoming, feature.key)) {
+      if (Object.prototype.hasOwnProperty.call(incoming, feature.key)) {
         merged[feature.key] = Boolean(incoming[feature.key]);
       } else if (Object.prototype.hasOwnProperty.call(defaults, feature.key)) {
         merged[feature.key] = Boolean(defaults[feature.key]);

@@ -33,17 +33,17 @@ const MatchForm = ({
       setMatchInfo(initialData.matchInfo);
       setGoals(initialData.goals || []);
     } else {
-        // Reset if no initial data (switching to Add mode)
-        setMatchInfo({
-            matchId: "",
-            team1: "",
-            team2: "",
-            score: "",
-            stadium: "",
-            date: "",
-            time: "",
-        });
-        setGoals([]);
+      // Reset if no initial data (switching to Add mode)
+      setMatchInfo({
+        matchId: "",
+        team1: "",
+        team2: "",
+        score: "",
+        stadium: "",
+        date: "",
+        time: "",
+      });
+      setGoals([]);
     }
   }, [initialData]);
 
@@ -60,14 +60,14 @@ const MatchForm = ({
   // Initialize goals if empty and not editing
   useEffect(() => {
     if (!isEditing && goals.length === 0 && goalTypes.length > 0) {
-       // Optional: Pre-add one empty goal row? No, let user add it.
-       // Actually original code did:
-       // setGoals([{ player: "", team: "", type: goalTypes[0], time: "", goalCode: "" }]);
-       // Let's keep it consistent if desired, but maybe better to start empty.
-       // The original code had a useEffect that added one if empty.
-       // Let's stick to: if user wants to add goal, they click add.
-       // BUT, original code:
-       /*
+      // Optional: Pre-add one empty goal row? No, let user add it.
+      // Actually original code did:
+      // setGoals([{ player: "", team: "", type: goalTypes[0], time: "", goalCode: "" }]);
+      // Let's keep it consistent if desired, but maybe better to start empty.
+      // The original code had a useEffect that added one if empty.
+      // Let's stick to: if user wants to add goal, they click add.
+      // BUT, original code:
+      /*
         setGoals((prev) => {
             if (!prev.length) {
                 return [{ player: "", team: "", type: goalTypes[0], time: "", goalCode: "" }];
@@ -75,11 +75,13 @@ const MatchForm = ({
             ...
         });
        */
-       // I will skip auto-adding for now to be cleaner, or add one if empty?
-       // Let's add one if empty ONLY for new forms.
-       if (!initialData && goals.length === 0) {
-           setGoals([{ player: "", team: "", type: goalTypes[0], time: "", goalCode: "" }]);
-       }
+      // I will skip auto-adding for now to be cleaner, or add one if empty?
+      // Let's add one if empty ONLY for new forms.
+      if (!initialData && goals.length === 0) {
+        setGoals([
+          { player: "", team: "", type: goalTypes[0], time: "", goalCode: "" },
+        ]);
+      }
     }
   }, [goalTypes, isEditing, initialData]);
 
@@ -225,8 +227,14 @@ const MatchForm = ({
         return;
       }
       const timeValue = Number(goal.time);
-      if (!Number.isFinite(timeValue) || timeValue < 0 || timeValue > goalTimeLimit) {
-        goalValidationError = `Thời điểm ghi bàn ở hàng ${idx + 1} không hợp lệ (0-${goalTimeLimit}).`;
+      if (
+        !Number.isFinite(timeValue) ||
+        timeValue < 0 ||
+        timeValue > goalTimeLimit
+      ) {
+        goalValidationError = `Thời điểm ghi bàn ở hàng ${
+          idx + 1
+        } không hợp lệ (0-${goalTimeLimit}).`;
         return;
       }
     });
@@ -255,32 +263,35 @@ const MatchForm = ({
   return (
     <form onSubmit={validateAndSubmit}>
       {error && <div className="admin-alert error">{error}</div>}
-      
-      <div className="record-match-card" style={isEditing ? { boxShadow: 'none', padding: 0 } : {}}>
+
+      <div
+        className="record-match-card"
+        style={isEditing ? { boxShadow: "none", padding: 0 } : {}}
+      >
         <div className="form-section">
           <h3>Thông tin trận đấu</h3>
           <div className="form-grid horizontal-layout">
             {!isEditing && (
-                <div className="form-group match-code">
+              <div className="form-group match-code">
                 <label htmlFor="matchId">Mã trận</label>
                 <select
-                    id="matchId"
-                    name="matchId"
-                    value={matchInfo.matchId}
-                    onChange={handleMatchInfoChange}
-                    className="form-control"
+                  id="matchId"
+                  name="matchId"
+                  value={matchInfo.matchId}
+                  onChange={handleMatchInfoChange}
+                  className="form-control"
                 >
-                    <option value="">Chọn mã trận</option>
-                    {schedules.map((match) => (
+                  <option value="">Chọn mã trận</option>
+                  {schedules.map((match) => (
                     <option key={match.id} value={match.id}>
-                        {match.match_code}
-                        {match.team1_name && match.team2_name
+                      {match.match_code}
+                      {match.team1_name && match.team2_name
                         ? ` - ${match.team1_name} vs ${match.team2_name}`
                         : ""}
                     </option>
-                    ))}
+                  ))}
                 </select>
-                </div>
+              </div>
             )}
 
             <div className="form-group team-select">
@@ -291,7 +302,7 @@ const MatchForm = ({
                 value={matchInfo.team1}
                 onChange={handleMatchInfoChange}
                 className="form-control"
-                disabled={!!matchInfo.matchId && !isEditing}
+                disabled={true}
               >
                 <option value="">Chọn đội</option>
                 {team1Options.map((team) => (
@@ -310,7 +321,7 @@ const MatchForm = ({
                 value={matchInfo.team2}
                 onChange={handleMatchInfoChange}
                 className="form-control"
-                disabled={!!matchInfo.matchId && !isEditing}
+                disabled={true}
               >
                 <option value="">Chọn đội</option>
                 {team2Options.map((team) => (
@@ -343,20 +354,23 @@ const MatchForm = ({
                 value={matchInfo.date}
                 onChange={handleMatchInfoChange}
                 className="form-control"
-                disabled={!!matchInfo.matchId && !isEditing}
+                disabled={true}
               />
             </div>
 
             <div className="form-group time-input">
               <label htmlFor="time">Giờ</label>
               <input
-                type="time"
+                type="text"
                 id="time"
                 name="time"
                 value={matchInfo.time}
                 onChange={handleMatchInfoChange}
                 className="form-control"
-                disabled={!!matchInfo.matchId && !isEditing}
+                pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
+                placeholder="VD: 14:30"
+                title="Nhập giờ theo định dạng 24 giờ (VD: 14:30)"
+                disabled={true}
               />
             </div>
 
@@ -370,7 +384,7 @@ const MatchForm = ({
                 onChange={handleMatchInfoChange}
                 placeholder="Sân vận động"
                 className="form-control"
-                disabled={!!matchInfo.matchId && !isEditing}
+                disabled={true}
               />
             </div>
           </div>
@@ -429,14 +443,18 @@ const MatchForm = ({
                         onChange={(e) => handleGoalChange(index, e)}
                       >
                         <option value="">Chọn cầu thủ</option>
-                        {(parseInt(goal.team, 10) === parseInt(matchInfo.team1, 10)
+                        {(parseInt(goal.team, 10) ===
+                        parseInt(matchInfo.team1, 10)
                           ? team1Players
-                          : parseInt(goal.team, 10) === parseInt(matchInfo.team2, 10)
+                          : parseInt(goal.team, 10) ===
+                            parseInt(matchInfo.team2, 10)
                           ? team2Players
                           : []
                         ).map((player) => (
                           <option key={player.id} value={player.id}>
-                            {player.player_code ? `[${player.player_code}] ` : ""}
+                            {player.player_code
+                              ? `[${player.player_code}] `
+                              : ""}
                             {player.name}
                           </option>
                         ))}

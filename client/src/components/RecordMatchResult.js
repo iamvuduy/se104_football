@@ -1,12 +1,316 @@
 import React, { useEffect, useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import "./RecordMatchResult.css";
-import { FaEdit, FaTrash, FaTimes } from "react-icons/fa";
+import { FaTimes, FaPlus, FaTrash } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import NotificationModal from "./NotificationModal";
 import MatchForm from "./MatchForm";
 
+// Component để sửa chỉ tỉ số và bàn thắng
+const EditMatchModal = ({ matchData, teams, settings, onSubmit, onCancel }) => {
+  const [score, setScore] = useState(matchData.matchInfo.score || "0-0");
+  const [goals, setGoals] = useState(matchData.goals || []);
+  const [error, setError] = useState("");
+
+  const team1 = teams.find((t) => String(t.id) === matchData.matchInfo.team1);
+  const team2 = teams.find((t) => String(t.id) === matchData.matchInfo.team2);
+
+  const goalTypes = useMemo(() => {
+    if (settings?.goal_types && settings.goal_types.length > 0) {
+      return settings.goal_types;
+    }
+    return ["A", "B", "C"];
+  }, [settings]);
+
+  const handleScoreChange = (newScore) => {
+    setScore(newScore);
+    setError("");
+  };
+
+  const handleAddGoal = () => {
+    setGoals([
+      ...goals,
+      { player: "", team: "", type: goalTypes[0], time: "", goalCode: "" },
+    ]);
+  };
+
+  const handleGoalChange = (index, field, value) => {
+    const updated = [...goals];
+    updated[index][field] = value;
+    setGoals(updated);
+  };
+
+  const handleDeleteGoal = (index) => {
+    setGoals(goals.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = () => {
+    if (!score || !/^\d+-\d+$/.test(score)) {
+      setError("Tỉ số không hợp lệ (định dạng: 1-0)");
+      return;
+    }
+
+    onSubmit({
+      matchInfo: {
+        ...matchData.matchInfo,
+        score: score,
+      },
+      goals: goals,
+    });
+  };
+
+  return (
+    <div className="modal-body">
+      {/* Thông tin trận đấu */}
+      <div className="form-section">
+        <h3>Thông tin trận đấu</h3>
+        <div className="form-grid">
+          <div className="form-group">
+            <label className="form-group label">Đội 1 (sân nhà)</label>
+            <input
+              type="text"
+              value={team1?.name || ""}
+              disabled
+              className="form-control"
+              style={{ backgroundColor: "#f0f3f7" }}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-group label">Đội 2</label>
+            <input
+              type="text"
+              value={team2?.name || ""}
+              disabled
+              className="form-control"
+              style={{ backgroundColor: "#f0f3f7" }}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-group label">Tỉ số</label>
+            <input
+              type="text"
+              placeholder="1-0"
+              value={score}
+              onChange={(e) => handleScoreChange(e.target.value)}
+              className="form-control"
+            />
+            {error && (
+              <div
+                style={{
+                  color: "#e74c3c",
+                  fontSize: "0.85rem",
+                  marginTop: "0.25rem",
+                }}
+              >
+                {error}
+              </div>
+            )}
+          </div>
+          <div className="form-group">
+            <label className="form-group label">Ngày</label>
+            <input
+              type="text"
+              value={matchData.matchInfo.date || ""}
+              disabled
+              className="form-control"
+              style={{ backgroundColor: "#f0f3f7" }}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-group label">Giờ</label>
+            <input
+              type="text"
+              value={matchData.matchInfo.time || ""}
+              disabled
+              className="form-control"
+              style={{ backgroundColor: "#f0f3f7" }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Sân thi đấu */}
+      <div className="form-section">
+        <div className="form-grid">
+          <div className="form-group stadium-input">
+            <label className="form-group label">Sân thi đấu</label>
+            <input
+              type="text"
+              value={matchData.matchInfo.stadium || ""}
+              disabled
+              className="form-control"
+              style={{ backgroundColor: "#f0f3f7" }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Danh sách bàn thắng */}
+      <div className="form-section">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "1rem",
+          }}
+        >
+          <h3 style={{ margin: 0 }}>Danh sách bàn thắng</h3>
+          <button
+            type="button"
+            onClick={handleAddGoal}
+            className="btn btn-primary"
+            style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}
+          >
+            <FaPlus /> Thêm bàn thắng
+          </button>
+        </div>
+
+        {goals.length === 0 ? (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "2rem 1rem",
+              background: "#f8f9fb",
+              borderRadius: "8px",
+              color: "#95a5a6",
+            }}
+          >
+            Chưa có bàn thắng nào
+          </div>
+        ) : (
+          <div className="goals-table-wrapper">
+            <table className="goals-table">
+              <thead>
+                <tr>
+                  <th>STT</th>
+                  <th>Mã bàn thắng</th>
+                  <th>Đội</th>
+                  <th>Cầu thủ</th>
+                  <th>Loại bàn thắng</th>
+                  <th>Thời điểm (phút)</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {goals.map((goal, index) => (
+                  <tr key={index}>
+                    <td style={{ textAlign: "center", fontWeight: 600 }}>
+                      {index + 1}
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        placeholder="Mã..."
+                        value={goal.goalCode || ""}
+                        onChange={(e) =>
+                          handleGoalChange(index, "goalCode", e.target.value)
+                        }
+                        className="form-control"
+                      />
+                    </td>
+                    <td>
+                      <select
+                        value={goal.team}
+                        onChange={(e) =>
+                          handleGoalChange(index, "team", e.target.value)
+                        }
+                        className="form-control"
+                      >
+                        <option value="">-- Chọn đội --</option>
+                        <option value={matchData.matchInfo.team1}>
+                          {team1?.name}
+                        </option>
+                        <option value={matchData.matchInfo.team2}>
+                          {team2?.name}
+                        </option>
+                      </select>
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        placeholder="Cầu thủ..."
+                        value={goal.player || ""}
+                        onChange={(e) =>
+                          handleGoalChange(index, "player", e.target.value)
+                        }
+                        className="form-control"
+                      />
+                    </td>
+                    <td>
+                      <select
+                        value={goal.type}
+                        onChange={(e) =>
+                          handleGoalChange(index, "type", e.target.value)
+                        }
+                        className="form-control"
+                      >
+                        {goalTypes.map((t) => (
+                          <option key={t} value={t}>
+                            {t}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        placeholder="Phút..."
+                        value={goal.time || ""}
+                        onChange={(e) =>
+                          handleGoalChange(index, "time", e.target.value)
+                        }
+                        className="form-control"
+                        min="0"
+                        max="120"
+                      />
+                    </td>
+                    <td style={{ textAlign: "center" }}>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteGoal(index)}
+                        className="btn btn-danger"
+                        style={{
+                          padding: "0.5rem",
+                          width: "36px",
+                          height: "36px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <FaTrash />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Nút hành động */}
+      <div className="btn-group" style={{ marginTop: "2rem" }}>
+        <button type="button" onClick={onCancel} className="btn btn-secondary">
+          Hủy
+        </button>
+        <button
+          type="button"
+          onClick={handleSubmit}
+          className="btn btn-primary"
+        >
+          Cập nhật
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const RecordMatchResult = () => {
   const { token, canAccessFeature } = useAuth();
+  const navigate = useNavigate();
   const canRecordResults = canAccessFeature("record_match_results");
 
   const [showModal, setShowModal] = useState(false); // For notifications
@@ -26,19 +330,21 @@ const RecordMatchResult = () => {
   const [settings, setSettings] = useState(null);
   const [recordedMatches, setRecordedMatches] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyPage, setHistoryPage] = useState(1);
+  const itemsPerPage = 5;
 
   // Filter out schedules that already have results
   const availableSchedules = useMemo(() => {
     if (!schedules || schedules.length === 0) return [];
     if (!recordedMatches || recordedMatches.length === 0) return schedules;
-    
+
     // Get list of match_codes that already have results
     const recordedMatchCodes = new Set(
-      recordedMatches.map(r => r.match_code).filter(Boolean)
+      recordedMatches.map((r) => r.match_code).filter(Boolean)
     );
-    
+
     // Filter out schedules that already have results
-    return schedules.filter(s => !recordedMatchCodes.has(s.match_code));
+    return schedules.filter((s) => !recordedMatchCodes.has(s.match_code));
   }, [schedules, recordedMatches]);
 
   useEffect(() => {
@@ -64,7 +370,8 @@ const RecordMatchResult = () => {
         if (!active) return;
 
         if (!teamRes.ok) throw new Error("Không thể tải danh sách đội bóng.");
-        if (!settingsRes.ok) throw new Error("Không thể tải quy định bàn thắng.");
+        if (!settingsRes.ok)
+          throw new Error("Không thể tải quy định bàn thắng.");
 
         const teamData = await teamRes.json();
         const settingsData = await settingsRes.json();
@@ -108,7 +415,8 @@ const RecordMatchResult = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        setRecordedMatches((data.data || []).slice(0, 5));
+        setRecordedMatches(data.data || []);
+        setHistoryPage(1);
       }
     } catch (err) {
       console.error("Failed to fetch match history:", err);
@@ -171,17 +479,17 @@ const RecordMatchResult = () => {
         setModalType("success");
         setShowModal(true);
         setToast(matchId ? "Đã cập nhật kết quả." : "Đã lưu kết quả trận đấu.");
-        
+
         // Refresh history
         fetchRecordedMatches();
-        
+
         // Close edit modal if open
         if (matchId) {
-            setShowEditModal(false);
-            setEditingMatchId(null);
-            setEditData(null);
+          setShowEditModal(false);
+          setEditingMatchId(null);
+          setEditData(null);
         }
-        
+
         // If creating, the form resets automatically via key or we can force it?
         // MatchForm resets when initialData changes.
         // For create, we might want to clear the form.
@@ -191,7 +499,6 @@ const RecordMatchResult = () => {
         // Or we can just let it be.
         // Ideally, we want to clear the form after success.
         // I'll add a key to the create form.
-        
       } else {
         const errorMsg =
           data.error || data.message || "Đã xảy ra lỗi khi lưu kết quả.";
@@ -297,7 +604,8 @@ const RecordMatchResult = () => {
     setEditData(null);
   };
 
-  if (!token) return <div className="record-match-container">Login required</div>;
+  if (!token)
+    return <div className="record-match-container">Login required</div>;
   if (!canRecordResults)
     return <div className="record-match-container">Access denied</div>;
 
@@ -334,18 +642,44 @@ const RecordMatchResult = () => {
 
         <div className="col-lg-4">
           <div className="record-match-card h-100">
-            <h3
+            <div
               style={{
-                fontSize: "1.25rem",
-                fontWeight: 700,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
                 marginBottom: "1.5rem",
                 borderBottom: "3px solid #4a90e2",
                 paddingBottom: "1rem",
-                color: "#1a2332",
+                gap: "1rem",
               }}
             >
-              Trận đấu gần đây
-            </h3>
+              <h3
+                style={{
+                  fontSize: "1.25rem",
+                  fontWeight: 700,
+                  margin: 0,
+                  color: "#1a2332",
+                }}
+              >
+                Trận đấu gần đây
+              </h3>
+              <button
+                onClick={() => navigate("/match-results")}
+                style={{
+                  padding: "0.5rem 1rem",
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                  backgroundColor: "#4a90e2",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "0.375rem",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Xem tất cả
+              </button>
+            </div>
             {historyLoading ? (
               <p className="text-muted text-center py-4">Đang tải lịch sử...</p>
             ) : recordedMatches.length === 0 ? (
@@ -353,75 +687,145 @@ const RecordMatchResult = () => {
                 Chưa có trận đấu nào.
               </p>
             ) : (
-              <div className="match-history-list">
-                {recordedMatches.map((match) => (
-                  <div key={match.id} className="match-history-item">
-                    <div className="match-history-content">
-                      <div className="match-history-teams">
-                        <span className="team-name">{match.team1_name}</span>
-                        <span className="match-score">{match.score}</span>
-                        <span className="team-name">{match.team2_name}</span>
+              <>
+                <div className="match-history-list">
+                  {recordedMatches
+                    .slice(
+                      (historyPage - 1) * itemsPerPage,
+                      historyPage * itemsPerPage
+                    )
+                    .map((match) => (
+                      <div key={match.id} className="match-history-item">
+                        <div className="match-history-content">
+                          <div className="match-history-teams">
+                            <span
+                              className="team-name"
+                              title={match.team1_name}
+                            >
+                              {match.team1_name}
+                            </span>
+                            <span className="match-score">
+                              {match.score || "vs"}
+                            </span>
+                            <span
+                              className="team-name"
+                              title={match.team2_name}
+                            >
+                              {match.team2_name}
+                            </span>
+                          </div>
+                          <div className="match-history-meta">
+                            <span className="match-meta-item">
+                              📅{" "}
+                              {new Date(match.match_date).toLocaleDateString(
+                                "vi-VN"
+                              )}
+                            </span>
+                            <span className="match-separator">•</span>
+                            <span className="match-meta-item">
+                              🕐 {match.match_time || "N/A"}
+                            </span>
+                            <span className="match-separator">•</span>
+                            <span className="match-meta-item">
+                              📍 {match.stadium}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="match-history-meta">
-                        <span className="match-date">
-                          {new Date(match.match_date).toLocaleDateString(
-                            "vi-VN"
-                          )}
-                        </span>
-                        <span className="match-separator">•</span>
-                        <span className="match-stadium">{match.stadium}</span>
-                      </div>
+                    ))}
+                </div>
+
+                {/* Pagination */}
+                {Math.ceil(recordedMatches.length / itemsPerPage) > 1 && (
+                  <div className="history-pagination">
+                    <button
+                      className="pagination-btn"
+                      onClick={() =>
+                        setHistoryPage((prev) => Math.max(prev - 1, 1))
+                      }
+                      disabled={historyPage === 1}
+                    >
+                      &lt;
+                    </button>
+
+                    <div className="pagination-pages">
+                      {Array.from(
+                        {
+                          length: Math.ceil(
+                            recordedMatches.length / itemsPerPage
+                          ),
+                        },
+                        (_, i) => i + 1
+                      ).map((page) => (
+                        <button
+                          key={page}
+                          className={`pagination-page ${
+                            historyPage === page ? "active" : ""
+                          }`}
+                          onClick={() => setHistoryPage(page)}
+                        >
+                          {page}
+                        </button>
+                      ))}
                     </div>
-                    <div className="match-history-actions">
-                      <button
-                        className="btn-icon btn-edit"
-                        onClick={() => handleEditMatch(match.id)}
-                        title="Sửa"
-                      >
-                        <FaEdit />
-                      </button>
-                      <button
-                        className="btn-icon btn-delete"
-                        onClick={() => handleDeleteMatch(match.id)}
-                        title="Xóa"
-                      >
-                        <FaTrash />
-                      </button>
-                    </div>
+
+                    <button
+                      className="pagination-btn"
+                      onClick={() =>
+                        setHistoryPage((prev) =>
+                          Math.min(
+                            prev + 1,
+                            Math.ceil(recordedMatches.length / itemsPerPage)
+                          )
+                        )
+                      }
+                      disabled={
+                        historyPage ===
+                        Math.ceil(recordedMatches.length / itemsPerPage)
+                      }
+                    >
+                      &gt;
+                    </button>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </div>
         </div>
       </div>
 
       {/* Edit Modal */}
-      {showEditModal && (
-        <div className="modal-overlay">
-          <div className="modal-content-wrapper">
-            <div className="modal-header">
-              <h2>Sửa kết quả trận đấu</h2>
-              <button
-                className="close-modal-btn"
-                onClick={handleCloseEditModal}
-              >
-                <FaTimes />
-              </button>
+      {showEditModal &&
+        createPortal(
+          <div className="modal-overlay" onClick={handleCloseEditModal}>
+            <div
+              className="modal-content-wrapper"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h2>Sửa kết quả trận đấu</h2>
+                <button
+                  className="close-modal-btn"
+                  onClick={handleCloseEditModal}
+                >
+                  <FaTimes />
+                </button>
+              </div>
+              {editData && (
+                <EditMatchModal
+                  matchData={editData}
+                  teams={teams}
+                  settings={settings}
+                  onSubmit={(updatedData) => {
+                    handleUpdate(updatedData.matchInfo, updatedData.goals);
+                  }}
+                  onCancel={handleCloseEditModal}
+                />
+              )}
             </div>
-            <MatchForm
-              initialData={editData}
-              teams={teams}
-              schedules={availableSchedules}
-              settings={settings}
-              onSubmit={handleUpdate}
-              onCancel={handleCloseEditModal}
-              isEditing={true}
-              token={token}
-            />
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       <NotificationModal
         isOpen={showModal}

@@ -75,6 +75,17 @@
   transform: translateY(-2px);
 }
 
+.team-action.success {
+  background: #007bff;
+  color: white;
+}
+
+.team-action.success:hover {
+  background: #0056b3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
 .team-action.ghost {
   background: transparent;
   color: #4a90e2;

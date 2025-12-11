@@ -1,10 +1,37 @@
 const express = require("express");
 const db = require("../database");
 const bcrypt = require("bcrypt");
+const adminMiddleware = require("../middleware/admin");
 const router = express.Router();
 
+// GET /api/users/me - Get current user info (with team_id) - Available to all authenticated users
+router.get("/me", (req, res) => {
+  const userId = req.user?.id;
+
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized." });
+  }
+
+  db.get(
+    `SELECT id, username, role, full_name AS fullName, email, dob, position, team_id FROM users WHERE id = ?`,
+    [userId],
+    (err, user) => {
+      if (err) {
+        return res
+          .status(500)
+          .json({ message: "Database error.", error: err.message });
+      }
+      if (!user) {
+        return res.status(404).json({ message: "User not found." });
+      }
+      res.json({ data: user });
+    }
+  );
+});
+
+// Below routes are admin-only
 // GET /api/users - Get all users
-router.get("/", (req, res) => {
+router.get("/", adminMiddleware, (req, res) => {
   db.all(
     `SELECT id, username, role, full_name AS fullName, email, dob, position FROM users`,
     [],
@@ -14,13 +41,13 @@ router.get("/", (req, res) => {
           .status(500)
           .json({ message: "Database error.", error: err.message });
       }
-      res.json(users);
+      res.json({ data: users });
     }
   );
 });
 
 // PUT /api/users/:id/role - Update user role
-router.put("/:id/role", (req, res) => {
+router.put("/:id/role", adminMiddleware, (req, res) => {
   const { role } = req.body;
   const { id } = req.params;
 
@@ -42,7 +69,7 @@ router.put("/:id/role", (req, res) => {
 });
 
 // PUT /api/users/:id - Update user information
-router.put("/:id", (req, res) => {
+router.put("/:id", adminMiddleware, (req, res) => {
   const { fullName, email, dob, position } = req.body;
   const { id } = req.params;
 
@@ -51,19 +78,19 @@ router.put("/:id", (req, res) => {
   const values = [];
 
   if (fullName !== undefined) {
-    updates.push('full_name = ?');
+    updates.push("full_name = ?");
     values.push(fullName);
   }
   if (email !== undefined) {
-    updates.push('email = ?');
+    updates.push("email = ?");
     values.push(email);
   }
   if (dob !== undefined) {
-    updates.push('dob = ?');
+    updates.push("dob = ?");
     values.push(dob);
   }
   if (position !== undefined) {
-    updates.push('position = ?');
+    updates.push("position = ?");
     values.push(position);
   }
 
@@ -72,7 +99,7 @@ router.put("/:id", (req, res) => {
   }
 
   values.push(id);
-  const query = `UPDATE users SET ${updates.join(', ')} WHERE id = ?`;
+  const query = `UPDATE users SET ${updates.join(", ")} WHERE id = ?`;
 
   db.run(query, values, function (err) {
     if (err) {
@@ -88,7 +115,7 @@ router.put("/:id", (req, res) => {
 });
 
 // PUT /api/users/:id/password - Update user password
-router.put("/:id/password", async (req, res) => {
+router.put("/:id/password", adminMiddleware, async (req, res) => {
   const { newPassword } = req.body;
   const { id } = req.params;
 
@@ -98,7 +125,7 @@ router.put("/:id/password", async (req, res) => {
 
   try {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    
+
     db.run(
       `UPDATE users SET password = ? WHERE id = ?`,
       [hashedPassword, id],
@@ -115,12 +142,14 @@ router.put("/:id/password", async (req, res) => {
       }
     );
   } catch (error) {
-    res.status(500).json({ message: "Error hashing password.", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error hashing password.", error: error.message });
   }
 });
 
 // DELETE /api/users/:id - Delete a user
-router.delete("/:id", (req, res) => {
+router.delete("/:id", adminMiddleware, (req, res) => {
   const { id } = req.params;
 
   db.run(`DELETE FROM users WHERE id = ?`, id, function (err) {

@@ -5,10 +5,17 @@ import * as XLSX from "xlsx";
 
 const TopScorerLeaderboard = () => {
   const [players, setPlayers] = useState([]);
-  const [loading, setLoading] = useState(false); // Default false
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState("all"); // 'all', 'domestic', 'foreign'
-  const { token } = useAuth();
+  const [reportStatus, setReportStatus] = useState(null);
+  const [isCreatingReport, setIsCreatingReport] = useState(false);
+  const [reportMessage, setReportMessage] = useState("");
+  const [isReportPublished, setIsReportPublished] = useState(false);
+  const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
+  const { token, user, canAccessFeature } = useAuth();
+
+  const isOrgnanizer = user?.role === "tournament_admin";
 
   const fetchTopScorers = async () => {
     if (!token) return null;
@@ -43,10 +50,10 @@ const TopScorerLeaderboard = () => {
   const filteredPlayers = useMemo(() => {
     if (filter === "all") return players;
     if (filter === "domestic") {
-      return players.filter(p => p.player_type === "Trong nước");
+      return players.filter((p) => p.player_type === "Trong nước");
     }
     if (filter === "foreign") {
-      return players.filter(p => p.player_type === "Ngoài nước");
+      return players.filter((p) => p.player_type === "Ngoài nước");
     }
     return players;
   }, [players, filter]);
@@ -57,23 +64,23 @@ const TopScorerLeaderboard = () => {
     const data = await fetchTopScorers();
     if (!data) return;
 
-    // Apply filter logic to the fetched data for export if needed, 
+    // Apply filter logic to the fetched data for export if needed,
     // but usually export might want to respect current view or export all.
     // The previous logic used 'filteredPlayers' which depends on state.
     // Since we just fetched, 'players' state might not be updated immediately in this closure if we rely on state.
     // However, we returned 'data' from fetchTopScorers.
-    
+
     // Let's filter the returned data based on current filter state
     let exportData = data;
     if (filter === "domestic") {
-      exportData = data.filter(p => p.player_type === "Trong nước");
+      exportData = data.filter((p) => p.player_type === "Trong nước");
     } else if (filter === "foreign") {
-      exportData = data.filter(p => p.player_type === "Ngoài nước");
+      exportData = data.filter((p) => p.player_type === "Ngoài nước");
     }
 
     const worksheet = XLSX.utils.json_to_sheet(
       exportData.map((player, index) => ({
-        "Hạng": index + 1,
+        Hạng: index + 1,
         "Cầu thủ": player.player_name,
         "Đội bóng": player.team_name,
         "Loại cầu thủ": player.player_type,
@@ -88,6 +95,189 @@ const TopScorerLeaderboard = () => {
   const handleViewReport = async () => {
     await fetchTopScorers();
   };
+
+  const loadLatestTopScorers = async () => {
+    try {
+      const response = await fetch("/api/leaderboard/top-scorers", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        setError(data.error || "Không thể tải bảng xếp hạng vua phá lưới");
+        setPlayers([]);
+        setIsReportPublished(false);
+      } else {
+        const playersData = Array.isArray(response)
+          ? response
+          : await response.json();
+        setPlayers(Array.isArray(playersData) ? playersData : []);
+        setError(null);
+        setIsReportPublished(true);
+      }
+    } catch (err) {
+      setError(err.message);
+      setPlayers([]);
+      setIsReportPublished(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    // Auto-load latest top scorers for all users
+    loadLatestTopScorers();
+
+    // Check report status for admin
+    if (isOrgnanizer) {
+      checkReportStatus();
+    }
+  }, [token]);
+
+  const handleCreateReport = async () => {
+    setIsCreatingReport(true);
+    setReportMessage("");
+
+    try {
+      const response = await fetch("/api/leaderboard/reports/top-scorer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ round: 0 }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setReportMessage(data.error || "Lỗi khi lập báo cáo");
+        setToast({
+          message: data.error || "Lỗi khi lập báo cáo",
+          type: "error",
+        });
+      } else {
+        setReportMessage(data.message);
+        setToast({
+          message: "Lập báo cáo thành công!",
+          type: "success",
+        });
+        // Wait a moment then check report status
+        setTimeout(() => {
+          checkReportStatus();
+        }, 500);
+      }
+    } catch (error) {
+      setReportMessage("Lỗi khi lập báo cáo: " + error.message);
+      setToast({
+        message: "Lỗi khi lập báo cáo: " + error.message,
+        type: "error",
+      });
+    } finally {
+      setIsCreatingReport(false);
+    }
+  };
+
+  const handlePublishReport = async () => {
+    try {
+      const response = await fetch(
+        `/api/leaderboard/reports/top-scorer/0/publish`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        setReportMessage(data.error || "Lỗi khi công khai báo cáo");
+        return;
+      }
+
+      const data = await response.json();
+      setReportMessage(data.message);
+
+      // Wait a moment then check report status and reload
+      setTimeout(() => {
+        checkReportStatus();
+        loadLatestTopScorers();
+      }, 300);
+    } catch (error) {
+      setReportMessage("Lỗi khi công khai báo cáo: " + error.message);
+    }
+  };
+
+  const handleUnpublishReport = async () => {
+    try {
+      const response = await fetch(
+        `/api/leaderboard/reports/top-scorer/0/unpublish`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setReportMessage(data.error || "Lỗi khi ẩn báo cáo");
+      } else {
+        setReportMessage(data.message);
+        await checkReportStatus();
+      }
+    } catch (error) {
+      setReportMessage("Lỗi khi ẩn báo cáo: " + error.message);
+    }
+  };
+
+  const checkReportStatus = async () => {
+    if (!isOrgnanizer) return;
+
+    try {
+      const response = await fetch(`/api/leaderboard/reports/status/all`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const reports = await response.json();
+        const scorerReport = reports.find(
+          (r) => r.round === 0 && r.type === "top_scorer_leaderboard"
+        );
+        setReportStatus(scorerReport);
+      } else {
+        console.error("Failed to fetch report status:", response.status);
+      }
+    } catch (error) {
+      console.error("Failed to check report status:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => {
+        setToast(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (isOrgnanizer) {
+      checkReportStatus();
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -113,6 +303,26 @@ const TopScorerLeaderboard = () => {
 
   return (
     <div className="top-scorer-page">
+      {toast && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: "20px",
+            right: "20px",
+            padding: "12px 20px",
+            borderRadius: "8px",
+            backgroundColor: toast.type === "success" ? "#28a745" : "#dc3545",
+            color: "white",
+            zIndex: 1000,
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+            animation:
+              "slideInRight 0.3s ease-out, fadeOut 0.3s ease-out 2.7s forwards",
+          }}
+        >
+          {toast.message}
+        </div>
+      )}
+
       <div className="ts-container">
         <header className="ts-hero">
           <div>
@@ -137,41 +347,111 @@ const TopScorerLeaderboard = () => {
 
         <section className="ts-table-section" aria-label="Danh sách đầy đủ">
           <header className="ts-table-header">
-            <div>
+            <div className="ts-table-header-left">
               <h3>DANH SÁCH</h3>
+              {/* Filter Buttons */}
+              <div className="ts-filter-buttons">
+                <button
+                  className={`ts-filter-btn ${
+                    filter === "all" ? "active" : ""
+                  }`}
+                  onClick={() => setFilter("all")}
+                >
+                  Tất cả
+                </button>
+                <button
+                  className={`ts-filter-btn ${
+                    filter === "domestic" ? "active" : ""
+                  }`}
+                  onClick={() => setFilter("domestic")}
+                >
+                  Trong nước
+                </button>
+                <button
+                  className={`ts-filter-btn ${
+                    filter === "foreign" ? "active" : ""
+                  }`}
+                  onClick={() => setFilter("foreign")}
+                >
+                  Ngoài nước
+                </button>
+              </div>
             </div>
-            
-            {/* Filter Buttons */}
-            <div className="ts-filter-buttons">
+
+            <div className="ts-export-buttons">
               <button
-                className={`ts-filter-btn ${filter === "all" ? "active" : ""}`}
-                onClick={() => setFilter("all")}
+                onClick={handleExportExcel}
+                className="ts-export-btn success"
               >
-                Tất cả
+                Xuất Excel
               </button>
-              <button
-                className={`ts-filter-btn ${filter === "domestic" ? "active" : ""}`}
-                onClick={() => setFilter("domestic")}
-              >
-                Trong nước
-              </button>
-              <button
-                className={`ts-filter-btn ${filter === "foreign" ? "active" : ""}`}
-                onClick={() => setFilter("foreign")}
-              >
-                Ngoài nước
-              </button>
+              {isOrgnanizer && canAccessFeature("create_reports") && (
+                <>
+                  <button
+                    onClick={handleCreateReport}
+                    disabled={isCreatingReport}
+                    className="ts-export-btn warning"
+                    style={{
+                      cursor: isCreatingReport ? "not-allowed" : "pointer",
+                      opacity: isCreatingReport ? 0.6 : 1,
+                    }}
+                  >
+                    {isCreatingReport ? "Đang lập..." : "Lập Báo Cáo"}
+                  </button>
+
+                  {reportStatus && (
+                    <>
+                      {!reportStatus.is_published && (
+                        <button
+                          onClick={handlePublishReport}
+                          className="ts-export-btn success"
+                        >
+                          Đưa Báo Cáo
+                        </button>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+
+              {isReportPublished && isOrgnanizer && <></>}
             </div>
           </header>
 
-          <div className="ts-export-buttons" style={{ display: 'flex', gap: '10px', padding: '0 24px 16px', justifyContent: 'flex-end' }}>
-            <button onClick={handleExportExcel} className="btn btn-success" style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: '#28a745', color: 'white' }}>
-              Xuất Excel
-            </button>
-            <button onClick={handleViewReport} className="btn btn-primary" style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer', backgroundColor: '#007bff', color: 'white' }}>
-              Xem Báo Cáo
-            </button>
-          </div>
+          {reportMessage && (
+            <div
+              style={{
+                padding: "10px",
+                marginBottom: "10px",
+                borderRadius: "6px",
+                backgroundColor: reportMessage.includes("Lỗi")
+                  ? "#f8d7da"
+                  : "#d4edda",
+                color: reportMessage.includes("Lỗi") ? "#721c24" : "#155724",
+                border: `1px solid ${
+                  reportMessage.includes("Lỗi") ? "#f5c6cb" : "#c3e6cb"
+                }`,
+              }}
+            >
+              {reportMessage}
+            </div>
+          )}
+
+          {error && !isReportPublished && (
+            <div
+              style={{
+                padding: "10px",
+                marginBottom: "10px",
+                borderRadius: "6px",
+                backgroundColor: "#f8d7da",
+                color: "#721c24",
+                border: "1px solid #f5c6cb",
+                textAlign: "center",
+              }}
+            >
+              {error}
+            </div>
+          )}
 
           <div className="ts-table-wrapper">
             <table className="ts-table">
@@ -187,9 +467,16 @@ const TopScorerLeaderboard = () => {
               <tbody>
                 {filteredPlayers.length === 0 ? (
                   <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: '#7f8c9a' }}>
-                      {players.length === 0 
-                        ? "Vui lòng chọn \"Xem Báo Cáo\" hoặc \"Xuất Excel\" để xem dữ liệu." 
+                    <td
+                      colSpan="5"
+                      style={{
+                        textAlign: "center",
+                        padding: "2rem",
+                        color: "#7f8c9a",
+                      }}
+                    >
+                      {players.length === 0
+                        ? "Chưa cập nhật bảng xếp hạng vua phá lưới"
                         : "Không có cầu thủ nào trong danh sách lọc này."}
                     </td>
                   </tr>

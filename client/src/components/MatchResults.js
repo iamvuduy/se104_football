@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import axios from "axios";
 import "./MatchResults.css";
 import { useAuth } from "../context/AuthContext";
@@ -17,6 +18,7 @@ import MatchForm from "./MatchForm";
 const MatchResults = () => {
   const { token, canAccessFeature } = useAuth();
   const canViewResults = canAccessFeature("view_match_results");
+  const canEditResults = canAccessFeature("record_match_results");
   const navigate = useNavigate();
 
   const [results, setResults] = useState([]);
@@ -27,6 +29,7 @@ const MatchResults = () => {
   const [error, setError] = useState("");
   const [toast, setToast] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedRound, setSelectedRound] = useState("");
   const itemsPerPage = 10;
 
   // Modal state
@@ -212,8 +215,7 @@ const MatchResults = () => {
     } catch (err) {
       console.error("Error deleting match result:", err);
       setToast({
-        message:
-          err.response?.data?.error || "Có lỗi xảy ra khi xóa kết quả.",
+        message: err.response?.data?.error || "Có lỗi xảy ra khi xóa kết quả.",
         type: "error",
       });
     }
@@ -223,12 +225,44 @@ const MatchResults = () => {
     navigate("/record-result");
   };
 
+  // Get round from schedule for a match
+  const getMatchRound = (match) => {
+    const schedule = schedules.find(
+      (s) => s.team1_id === match.team1_id && s.team2_id === match.team2_id
+    );
+    return schedule?.round ? parseInt(schedule.round) : null;
+  };
+
+  // Get unique rounds from schedules - show all rounds from 1 to max
+  const availableRounds = useMemo(() => {
+    const rounds = schedules
+      .map((s) => parseInt(s.round))
+      .filter((r) => !isNaN(r) && r > 0);
+
+    if (rounds.length === 0) return [];
+
+    const maxRound = Math.max(...rounds);
+    // Generate continuous array from 1 to maxRound
+    return Array.from({ length: maxRound }, (_, i) => i + 1);
+  }, [schedules]);
+
+  // Filter results by selected round
+  const filteredResults = useMemo(() => {
+    if (!selectedRound) return results;
+
+    const targetRound = parseInt(selectedRound);
+    return results.filter((match) => {
+      const matchRound = getMatchRound(match);
+      return matchRound === targetRound;
+    });
+  }, [results, selectedRound, schedules]);
+
   // Pagination
-  const totalPages = Math.ceil(results.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredResults.length / itemsPerPage);
   const currentResults = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
-    return results.slice(start, start + itemsPerPage);
-  }, [results, currentPage]);
+    return filteredResults.slice(start, start + itemsPerPage);
+  }, [filteredResults, currentPage]);
 
   if (!token) {
     return (
@@ -260,9 +294,11 @@ const MatchResults = () => {
           <h2>Kết quả trận đấu</h2>
           <p>Danh sách tất cả các trận đấu đã được ghi nhận kết quả</p>
         </div>
-        <button className="btn btn-primary" onClick={handleCreateNew}>
-          <FaPlus /> Ghi nhận kết quả mới
-        </button>
+        {canEditResults && (
+          <button className="btn btn-primary" onClick={handleCreateNew}>
+            <FaPlus /> Ghi nhận kết quả mới
+          </button>
+        )}
       </div>
 
       {error && (
@@ -283,12 +319,42 @@ const MatchResults = () => {
       )}
 
       <div className="match-results-card">
+        <div className="filter-section">
+          <div className="filter-group">
+            <label htmlFor="round-filter" className="filter-label">
+              Lọc theo vòng
+            </label>
+            <select
+              id="round-filter"
+              value={selectedRound}
+              onChange={(e) => {
+                setSelectedRound(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="filter-select"
+            >
+              <option value="">Tất cả các vòng</option>
+              {availableRounds.map((round) => (
+                <option key={round} value={round}>
+                  Vòng {round}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="filter-stats">
+            <span className="stats-badge">
+              {filteredResults.length} kết quả
+            </span>
+          </div>
+        </div>
+
         <div className="results-table-wrapper">
           <table className="results-table">
             <thead>
               <tr>
                 <th style={{ width: "50px" }}>STT</th>
                 <th>Mã trận</th>
+                <th style={{ width: "80px" }}>Vòng</th>
                 <th>Đội 1</th>
                 <th style={{ width: "80px", textAlign: "center" }}>Tỷ số</th>
                 <th>Đội 2</th>
@@ -300,10 +366,14 @@ const MatchResults = () => {
               </tr>
             </thead>
             <tbody>
-              {results.length === 0 ? (
+              {filteredResults.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="empty-state">
-                    <p>Chưa có kết quả trận đấu nào được ghi nhận.</p>
+                  <td colSpan={9} className="empty-state">
+                    <p>
+                      {selectedRound
+                        ? `Chưa có trận nào thuộc vòng ${selectedRound} được ghi kết quả.`
+                        : "Chưa có kết quả trận đấu nào được ghi nhận."}
+                    </p>
                   </td>
                 </tr>
               ) : (
@@ -314,6 +384,15 @@ const MatchResults = () => {
                     </td>
                     <td>
                       <strong>{result.match_code || "—"}</strong>
+                    </td>
+                    <td
+                      style={{
+                        textAlign: "center",
+                        fontWeight: 600,
+                        color: "#007bff",
+                      }}
+                    >
+                      {getMatchRound(result) || "N/A"}
                     </td>
                     <td>
                       <strong>{result.team1_name}</strong>
@@ -336,20 +415,24 @@ const MatchResults = () => {
                           justifyContent: "center",
                         }}
                       >
-                        <button
-                          type="button"
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => handleEdit(result.id)}
-                        >
-                          <FaEdit />
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-danger btn-sm"
-                          onClick={() => handleDelete(result.id)}
-                        >
-                          <FaTrash />
-                        </button>
+                        {canEditResults && (
+                          <>
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => handleEdit(result.id)}
+                            >
+                              <FaEdit />
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-danger btn-sm"
+                              onClick={() => handleDelete(result.id)}
+                            >
+                              <FaTrash />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -400,28 +483,33 @@ const MatchResults = () => {
       </div>
 
       {/* Edit Modal */}
-      {showEditModal && (
-        <div className="modal-overlay">
-          <div className="modal-content-wrapper">
-            <div className="modal-header">
-              <h2>Sửa kết quả trận đấu</h2>
-              <button className="close-modal-btn" onClick={handleCloseEditModal}>
-                <FaTimes />
-              </button>
+      {showEditModal &&
+        createPortal(
+          <div className="modal-overlay">
+            <div className="modal-content-wrapper">
+              <div className="modal-header">
+                <h2>Sửa kết quả trận đấu</h2>
+                <button
+                  className="close-modal-btn"
+                  onClick={handleCloseEditModal}
+                >
+                  <FaTimes />
+                </button>
+              </div>
+              <MatchForm
+                initialData={editData}
+                teams={teams}
+                schedules={schedules}
+                settings={settings}
+                onSubmit={handleUpdate}
+                onCancel={handleCloseEditModal}
+                isEditing={true}
+                token={token}
+              />
             </div>
-            <MatchForm
-              initialData={editData}
-              teams={teams}
-              schedules={schedules}
-              settings={settings}
-              onSubmit={handleUpdate}
-              onCancel={handleCloseEditModal}
-              isEditing={true}
-              token={token}
-            />
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

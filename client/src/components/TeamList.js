@@ -11,9 +11,10 @@ const TeamList = () => {
   const [deletingId, setDeletingId] = useState(null);
   const [status, setStatus] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const { token, canAccessFeature } = useAuth();
+  const { token, user, canAccessFeature } = useAuth();
   const canManageTeams = canAccessFeature("manage_teams");
   const canRegisterTeams = canAccessFeature("register_team");
+  const isTeamOwner = user?.role === "team_owner";
   const TEAMS_PER_PAGE = 6;
 
   const fetchTeams = useCallback(async () => {
@@ -44,12 +45,19 @@ const TeamList = () => {
   }, [fetchTeams]);
 
   const sortedTeams = useMemo(() => {
-    return [...teams].sort((a, b) => {
+    let filtered = [...teams];
+
+    // Team owner only sees their own team
+    if (isTeamOwner && user?.team_id) {
+      filtered = filtered.filter((team) => team.id === user.team_id);
+    }
+
+    return filtered.sort((a, b) => {
       const codeA = (a.team_code || "").toUpperCase();
       const codeB = (b.team_code || "").toUpperCase();
       return codeA.localeCompare(codeB, "vi", { numeric: true });
     });
-  }, [teams]);
+  }, [teams, isTeamOwner, user?.team_id]);
 
   // Pagination logic
   const totalPages = Math.ceil(sortedTeams.length / TEAMS_PER_PAGE);
@@ -61,7 +69,7 @@ const TeamList = () => {
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
       setCurrentPage(newPage);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -136,14 +144,12 @@ const TeamList = () => {
             {loading ? "Đang tải..." : "Tải lại"}
           </button>
           {canManageTeams && (
-            <Link to="/register-team" className="team-action secondary">
+            <Link to="/register-team" className="team-action success">
               Thêm đội mới
             </Link>
           )}
         </div>
       </header>
-
-
 
       {status && (
         <div
@@ -233,7 +239,7 @@ const TeamList = () => {
                 >
                   ← Trước
                 </button>
-                
+
                 <div className="team-pagination-pages">
                   {[...Array(totalPages)].map((_, index) => {
                     const pageNum = index + 1;

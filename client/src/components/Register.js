@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { FaUserPlus } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 import "./Register.css";
 
@@ -58,9 +59,17 @@ const Register = () => {
       <div className="auth-split-layout">
         <div className="auth-branding"></div>
         <div className="auth-form-container">
-          <div className="auth-branding-content">
-            <h1>Tạo tài khoản</h1>
-            <p>Vui lòng điền đầy đủ thông tin để kích hoạt quyền truy cập.</p>
+          <div className="auth-header-box">
+            <div className="auth-header-icon">
+              <FaUserPlus />
+            </div>
+            <div className="auth-header-content">
+              <h1>Tạo tài khoản</h1>
+              <p>
+                Điền thông tin cá nhân để kích hoạt quyền truy cập. Nếu không
+                chọn chức vụ, hệ thống mặc định vai trò Khán giả.
+              </p>
+            </div>
           </div>
           <div className="auth-form-card">
             <h2>Đăng ký</h2>

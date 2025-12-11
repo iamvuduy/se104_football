@@ -1,76 +1,56 @@
+/* Notification Modal - Toast Style */
 
-/* Notification Modal - Modern Alert with Dark Overlay */
-
-/* Overlay - Darker background */
+/* Overlay - No dark background for toast */
 .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  animation: fadeIn 0.3s ease;
+  position: fixed !important;
+  top: 20px !important;
+  right: 20px !important;
+  left: auto !important;
+  bottom: auto !important;
+  z-index: 9999 !important;
+  animation: slideInRight 0.3s ease;
+  pointer-events: none;
+  background: transparent !important;
+  display: block !important;
+  align-items: unset !important;
+  justify-content: unset !important;
 }
 
 .modal-overlay.visible {
   opacity: 1;
 }
 
-.notification-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
+@keyframes slideInRight {
   from {
+    transform: translateX(400px);
     opacity: 0;
   }
   to {
+    transform: translateX(0);
     opacity: 1;
   }
 }
 
-/* Modal Box */
+/* Modal Box - Toast Style */
 .notification-modal {
   background: white;
-  border-radius: 16px;
-  padding: 2.5rem;
-  max-width: 500px;
-  width: 90%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-  animation: slideUp 0.3s ease;
-  text-align: center;
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  max-width: 350px;
+  width: auto;
+  min-width: 280px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  pointer-events: auto;
 }
 
-@keyframes slideUp {
-  from {
-    transform: translateY(50px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-/* Modal Icon */
+/* Modal Icon - Smaller for toast */
 .modal-icon {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto 1.5rem;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -85,25 +65,47 @@
   background: linear-gradient(135deg, #e74c3c, #ec7063);
 }
 
-.modal-icon svg {
-  width: 32px;
-  height: 32px;
+.notification-modal.warning .modal-icon {
+  background: linear-gradient(135deg, #f39c12, #f1c40f);
 }
 
-/* Border Top */
+.notification-modal.info .modal-icon {
+  background: linear-gradient(135deg, #3498db, #5dade2);
+}
+
+.modal-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Border Left instead of Top for toast */
 .notification-modal.success {
-  border-top: 4px solid #27ae60;
+  border-left: 4px solid #27ae60;
 }
 
 .notification-modal.error {
-  border-top: 4px solid #e74c3c;
+  border-left: 4px solid #e74c3c;
 }
 
-/* Title */
+.notification-modal.warning {
+  border-left: 4px solid #f39c12;
+}
+
+.notification-modal.info {
+  border-left: 4px solid #3498db;
+}
+
+/* Toast Content Container */
+.toast-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Title - Smaller for toast */
 .modal-title {
-  font-size: 1.75rem;
+  font-size: 1rem;
   font-weight: 700;
-  margin-bottom: 1rem;
+  margin: 0 0 0.25rem 0;
 }
 
 .notification-modal.success .modal-title {
@@ -114,70 +116,47 @@
   color: #e74c3c;
 }
 
-/* Message */
+.notification-modal.warning .modal-title {
+  color: #f39c12;
+}
+
+.notification-modal.info .modal-title {
+  color: #3498db;
+}
+
+/* Message - Smaller for toast */
 .modal-message {
   color: #5a6c7d;
-  font-size: 1rem;
-  margin-bottom: 2rem;
-  line-height: 1.6;
+  font-size: 0.875rem;
+  margin: 0;
+  line-height: 1.4;
 }
 
-/* OK Button */
-.modal-ok-button {
-  width: 100%;
-  padding: 1rem;
-  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
-  color: white;
+/* Close button - Simple X */
+.modal-close-button {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  background: transparent;
   border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.modal-ok-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(74, 144, 226, 0.4);
-}
-
-.modal-ok-button:active {
-  transform: translateY(0);
-}
-
-/* Legacy support */
-.notification-modal h3 {
+  color: #999;
   font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 1rem;
-}
-
-.notification-modal.success h3 {
-  color: #27ae60;
-}
-
-.notification-modal.error h3 {
-  color: #e74c3c;
-}
-
-.notification-modal p {
-  color: #7f8c9a;
-  margin-bottom: 1.5rem;
-}
-
-.notification-modal button {
-  width: 100%;
-  padding: 0.875rem;
-  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
+  line-height: 1;
   cursor: pointer;
-  transition: all 0.3s;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
 }
 
-.notification-modal button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
+.modal-close-button:hover {
+  color: #333;
 }
+
+/* Hide OK button for toast */
+.modal-ok-button {
+  display: none;
+}
+
+/* Remove legacy support - not needed for toast */

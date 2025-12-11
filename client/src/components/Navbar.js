@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { resolveRole, ROLES } from "../utils/roles";
 import "./Navbar.css";
 
 const Navbar = () => {
@@ -8,6 +9,9 @@ const Navbar = () => {
   const navigate = useNavigate();
   const [openDropdown, setOpenDropdown] = useState(null);
   const dropdownRef = useRef(null);
+
+  // Check if user is system_admin (only has manage_users permission)
+  const isAdminOnly = user && resolveRole(user.role) === ROLES.SYSTEM_ADMIN;
 
   const navItems = [
     {
@@ -74,20 +78,25 @@ const Navbar = () => {
     },
   ];
 
-  const visibleNavItems = navItems
-    .map((item) => {
-      if (item.type === "dropdown") {
-        const visibleChildren = (item.children || []).filter((child) =>
-          canAccessFeature(child.feature)
-        );
-        if (!canAccessFeature(item.feature) || visibleChildren.length === 0) {
-          return null;
-        }
-        return { ...item, children: visibleChildren };
-      }
-      return canAccessFeature(item.feature) ? item : null;
-    })
-    .filter(Boolean);
+  const visibleNavItems = isAdminOnly
+    ? navItems.filter((item) => item.key === "users") // Admin chỉ thấy "Quản lý người dùng"
+    : navItems
+        .map((item) => {
+          if (item.type === "dropdown") {
+            const visibleChildren = (item.children || []).filter((child) =>
+              canAccessFeature(child.feature)
+            );
+            if (
+              !canAccessFeature(item.feature) ||
+              visibleChildren.length === 0
+            ) {
+              return null;
+            }
+            return { ...item, children: visibleChildren };
+          }
+          return canAccessFeature(item.feature) ? item : null;
+        })
+        .filter(Boolean);
 
   const handleLogout = () => {
     logout();
@@ -134,7 +143,10 @@ const Navbar = () => {
                     onClick={() => toggleDropdown(item.key)}
                     style={{ cursor: "pointer" }}
                   >
-                    {item.label} <span style={{ fontSize: "0.7em", marginLeft: "4px" }}>▼</span>
+                    {item.label}{" "}
+                    <span style={{ fontSize: "0.7em", marginLeft: "4px" }}>
+                      ▼
+                    </span>
                   </span>
                   <div className={`dropdown-content ${isOpen ? "show" : ""}`}>
                     {item.children?.map((child) => (

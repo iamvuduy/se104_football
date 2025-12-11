@@ -16,8 +16,12 @@ import { useAuth } from "../context/AuthContext";
 const TEAM_CODE_REGEX = /^FC\d{3}$/;
 
 const TeamRegistration = () => {
-  const { token } = useAuth();
+  const { token, user, fetchCurrentUser } = useAuth();
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
+
+  // Check if user is team_owner with a team assigned
+  const isTeamOwner = user?.role === "team_owner";
+  const isEditMode = isTeamOwner && user?.team_id;
 
   // Auto-hide toast after 3 seconds
   useEffect(() => {
@@ -58,9 +62,10 @@ const TeamRegistration = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const teamsPerPage = 5;
 
+  // State for edit mode (team_owner case)
+  const [isLoadingOwnTeam, setIsLoadingOwnTeam] = useState(false);
+
   const endOfPlayersRef = useRef(null); // Ref for auto-scrolling
-
-
 
   const fetchTeamHistory = async () => {
     try {
@@ -78,6 +83,44 @@ const TeamRegistration = () => {
       setHistoryLoading(false);
     }
   };
+
+  // Load user's own team if in edit mode
+  useEffect(() => {
+    if (!isEditMode || !user?.team_id) {
+      return;
+    }
+
+    const fetchOwnTeam = async () => {
+      try {
+        setIsLoadingOwnTeam(true);
+        const response = await axios.get(`/api/teams/${user.team_id}`);
+        const team = response.data;
+
+        setTeamCode(team.team_code || "");
+        setTeamName(team.name || "");
+        setHomeStadium(team.home_stadium || "");
+        setPlayers(
+          (team.players || []).map((p) => ({
+            playerCode: p.player_code || "",
+            name: p.name || "",
+            dob: p.dob || "",
+            type: p.type || "Trong nước",
+            notes: p.notes || "",
+          }))
+        );
+      } catch (error) {
+        console.error("Failed to load team:", error);
+        setToast({
+          type: "error",
+          message: "Không thể tải thông tin đội của bạn.",
+        });
+      } finally {
+        setIsLoadingOwnTeam(false);
+      }
+    };
+
+    fetchOwnTeam();
+  }, [isEditMode, user?.team_id]);
 
   useEffect(() => {
     fetchTeamHistory();
@@ -231,7 +274,7 @@ const TeamRegistration = () => {
 
     players.forEach((player, index) => {
       const playerError = {};
-      
+
       // Validate player code
       const code = (player.playerCode || "").trim();
       if (!code) {
@@ -243,7 +286,7 @@ const TeamRegistration = () => {
       } else {
         playerCodeSet.add(code);
       }
-      
+
       if (!player.name.trim()) playerError.name = true;
       if (!player.dob) playerError.dob = true;
 
@@ -328,24 +371,49 @@ const TeamRegistration = () => {
 
     setErrors({});
     try {
-      const response = await axios.post("/api/teams", {
-        teamCode,
-        teamName,
-        homeStadium,
-        players,
-      });
-      setToast({
-        type: "success",
-        message: response.data.message || "Đăng ký đội bóng thành công!",
-      });
-      setTeamCode("");
-      setTeamName("");
-      setHomeStadium("");
-      setPlayers([{ playerCode: "", name: "", dob: "", type: "Trong nước", notes: "" }]);
+      let response;
+
+      if (isEditMode) {
+        // Update existing team (PUT)
+        response = await axios.put(`/api/teams/${user.team_id}`, {
+          teamCode,
+          teamName,
+          homeStadium,
+          players,
+        });
+        setToast({
+          type: "success",
+          message: response.data.message || "Cập nhật đội bóng thành công!",
+        });
+      } else {
+        // Create new team (POST)
+        response = await axios.post("/api/teams", {
+          teamCode,
+          teamName,
+          homeStadium,
+          players,
+        });
+        setToast({
+          type: "success",
+          message: response.data.message || "Đăng ký đội bóng thành công!",
+        });
+        // Clear form only on successful new registration
+        setTeamCode("");
+        setTeamName("");
+        setHomeStadium("");
+        setPlayers([
+          { playerCode: "", name: "", dob: "", type: "Trong nước", notes: "" },
+        ]);
+        // Refresh user data to get team_id
+        await fetchCurrentUser();
+      }
+
       fetchTeamHistory();
     } catch (error) {
       const errorMessage =
-        error.response?.data?.error || error.response?.data?.message || "Đã có lỗi xảy ra, vui lòng thử lại.";
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        "Đã có lỗi xảy ra, vui lòng thử lại.";
 
       setToast({
         type: "error",
@@ -358,7 +426,11 @@ const TeamRegistration = () => {
     <div className="registration-container">
       {toast && (
         <div className={`toast-notification toast-${toast.type}`}>
-          {toast.type === "success" ? <FaCheckCircle /> : <FaExclamationCircle />}
+          {toast.type === "success" ? (
+            <FaCheckCircle />
+          ) : (
+            <FaExclamationCircle />
+          )}
           {toast.message}
         </div>
       )}
@@ -366,8 +438,12 @@ const TeamRegistration = () => {
         <div className="col-lg-8 mb-3 mb-lg-0">
           <div className="registration-form-card">
             <h3 className="mb-3">
-              <FaClipboardList /> Hồ Sơ Đội Bóng
+              <FaClipboardList />{" "}
+              {isEditMode ? "Sửa Đội Bóng" : "Hồ Sơ Đội Bóng"}
             </h3>
+            {isLoadingOwnTeam && (
+              <div className="alert alert-info">Đang tải thông tin đội...</div>
+            )}
             <form onSubmit={handleSubmit} noValidate>
               <div className="row mb-3">
                 <div className="col-md-4">
@@ -442,7 +518,9 @@ const TeamRegistration = () => {
                             type="text"
                             name="playerCode"
                             className={`form-control ${
-                              errors.players?.[index]?.playerCode ? "is-invalid" : ""
+                              errors.players?.[index]?.playerCode
+                                ? "is-invalid"
+                                : ""
                             }`}
                             value={player.playerCode}
                             onChange={(e) => handlePlayerChange(index, e)}
@@ -520,8 +598,12 @@ const TeamRegistration = () => {
                 >
                   <FaPlus /> Thêm cầu thủ
                 </button>
-                <button type="submit" className="btn btn-primary btn-lg">
-                  Đăng ký đội bóng
+                <button
+                  type="submit"
+                  className="btn btn-primary btn-lg"
+                  disabled={isLoadingOwnTeam}
+                >
+                  {isEditMode ? "Cập nhật đội" : "Đăng ký đội bóng"}
                 </button>
               </div>
             </form>
@@ -531,77 +613,116 @@ const TeamRegistration = () => {
         <div className="col-lg-4">
           <div className="registration-form-card">
             <h3 className="mb-3">
-              <FaHistory /> Lịch sử đăng ký
+              <FaHistory /> {isEditMode ? "Đội của tôi" : "Lịch sử đăng ký"}
             </h3>
-            {historyLoading ? (
-              <p>Loading history...</p>
-            ) : teamHistory.length === 0 ? (
-              <p>Chưa có đội nào được đăng ký.</p>
-            ) : (
-              <>
-                <div className="list-group list-group-flush">
-                  {(() => {
-                    const indexOfLastTeam = currentPage * teamsPerPage;
-                    const indexOfFirstTeam = indexOfLastTeam - teamsPerPage;
-                    const currentTeams = teamHistory.slice(indexOfFirstTeam, indexOfLastTeam);
-                    
-                    return currentTeams.map((team) => (
-                      <Link
-                        key={team.id}
-                        to={`/teams/${team.id}`}
-                        className="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                      >
-                        <div>
-                          <div className="fw-bold">
-                            {team.team_code ? `${team.team_code} · ` : ""}
-                            {team.name}
-                          </div>
-                          <small className="text-muted">{team.home_stadium}</small>
-                        </div>
-                        <span className="badge bg-primary rounded-pill">
-                          {team.player_count}
-                        </span>
-                      </Link>
-                    ));
-                  })()}
+            {isEditMode ? (
+              // For team owners, show only their team
+              isLoadingOwnTeam ? (
+                <p>Đang tải...</p>
+              ) : user?.team_id ? (
+                <div className="alert alert-info">
+                  <strong>Đội của bạn:</strong>
+                  <p className="mb-0 mt-2">{teamName || "Chưa có tên"}</p>
+                  <small>Mã: {teamCode}</small>
                 </div>
-                
-                {/* Pagination Controls */}
-                {teamHistory.length > teamsPerPage && (
-                  <div className="pagination-container">
-                    <button
-                      className="pagination-btn"
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
-                    >
-                      ‹
-                    </button>
-                    
-                    {(() => {
-                      const totalPages = Math.ceil(teamHistory.length / teamsPerPage);
-                      const pages = [];
-                      for (let i = 1; i <= totalPages; i++) {
-                        pages.push(
-                          <button
-                            key={i}
-                            className={`pagination-btn ${currentPage === i ? 'active' : ''}`}
-                            onClick={() => setCurrentPage(i)}
-                          >
-                            {i}
-                          </button>
+              ) : (
+                <p>Bạn chưa có đội. Vui lòng đăng ký đội mới.</p>
+              )
+            ) : (
+              // For other users, show history
+              <>
+                {historyLoading ? (
+                  <p>Loading history...</p>
+                ) : teamHistory.length === 0 ? (
+                  <p>Chưa có đội nào được đăng ký.</p>
+                ) : (
+                  <>
+                    <div className="list-group list-group-flush">
+                      {(() => {
+                        const indexOfLastTeam = currentPage * teamsPerPage;
+                        const indexOfFirstTeam = indexOfLastTeam - teamsPerPage;
+                        const currentTeams = teamHistory.slice(
+                          indexOfFirstTeam,
+                          indexOfLastTeam
                         );
-                      }
-                      return pages;
-                    })()}
-                    
-                    <button
-                      className="pagination-btn"
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(teamHistory.length / teamsPerPage)))}
-                      disabled={currentPage === Math.ceil(teamHistory.length / teamsPerPage)}
-                    >
-                      ›
-                    </button>
-                  </div>
+
+                        return currentTeams.map((team) => (
+                          <Link
+                            key={team.id}
+                            to={`/teams/${team.id}`}
+                            className="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                          >
+                            <div>
+                              <div className="fw-bold">
+                                {team.team_code ? `${team.team_code} · ` : ""}
+                                {team.name}
+                              </div>
+                              <small className="text-muted">
+                                {team.home_stadium}
+                              </small>
+                            </div>
+                            <span className="badge bg-primary rounded-pill">
+                              {team.player_count}
+                            </span>
+                          </Link>
+                        ));
+                      })()}
+                    </div>
+
+                    {/* Pagination Controls */}
+                    {teamHistory.length > teamsPerPage && (
+                      <div className="pagination-container">
+                        <button
+                          className="pagination-btn"
+                          onClick={() =>
+                            setCurrentPage((prev) => Math.max(prev - 1, 1))
+                          }
+                          disabled={currentPage === 1}
+                        >
+                          ‹
+                        </button>
+
+                        {(() => {
+                          const totalPages = Math.ceil(
+                            teamHistory.length / teamsPerPage
+                          );
+                          const pages = [];
+                          for (let i = 1; i <= totalPages; i++) {
+                            pages.push(
+                              <button
+                                key={i}
+                                className={`pagination-btn ${
+                                  currentPage === i ? "active" : ""
+                                }`}
+                                onClick={() => setCurrentPage(i)}
+                              >
+                                {i}
+                              </button>
+                            );
+                          }
+                          return pages;
+                        })()}
+
+                        <button
+                          className="pagination-btn"
+                          onClick={() =>
+                            setCurrentPage((prev) =>
+                              Math.min(
+                                prev + 1,
+                                Math.ceil(teamHistory.length / teamsPerPage)
+                              )
+                            )
+                          }
+                          disabled={
+                            currentPage ===
+                            Math.ceil(teamHistory.length / teamsPerPage)
+                          }
+                        >
+                          ›
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}

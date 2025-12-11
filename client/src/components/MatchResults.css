@@ -233,6 +233,87 @@
   color: #718096;
 }
 
+/* Filter Section */
+.filter-section {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid #f0f3f7;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+  min-width: 200px;
+}
+
+.filter-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #4a5568;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.filter-select {
+  padding: 0.75rem 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #2d3748;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a5568' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1.25rem;
+  padding-right: 2.5rem;
+}
+
+.filter-select:hover {
+  border-color: #4a90e2;
+  box-shadow: 0 2px 8px rgba(74, 144, 226, 0.1);
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1),
+    0 2px 8px rgba(74, 144, 226, 0.15);
+}
+
+.filter-stats {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.stats-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  background: linear-gradient(135deg, #f0f7ff 0%, #e8f1ff 100%);
+  color: #2c5aa0;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-radius: 8px;
+  border: 1px solid #b3d9ff;
+}
+
+.stats-badge::before {
+  content: "📊";
+  font-size: 1.1rem;
+}
+
 /* Pagination */
 .pagination-container {
   display: flex;
@@ -304,6 +385,20 @@
     font-size: 1.25rem;
   }
 
+  .filter-section {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .filter-group {
+    min-width: 100%;
+  }
+
+  .filter-stats {
+    justify-content: flex-start;
+  }
+
   .results-table {
     font-size: 0.75rem;
   }
@@ -324,28 +419,32 @@
   position: fixed;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
+  width: 100%;
+  height: 100%;
   background-color: rgba(0, 0, 0, 0.6);
+  z-index: 99999;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.3s ease;
+  overflow-y: auto;
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
-  backdrop-filter: blur(4px);
-  animation: fadeIn 0.3s ease;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 .modal-content-wrapper {
   background: white;
   padding: 2rem;
   border-radius: 16px;
-  width: 90%;
-  max-width: 1000px;
-  max-height: 90vh;
+  width: 100%;
+  max-width: 900px;
+  max-height: calc(100vh - 40px);
   overflow-y: auto;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   animation: slideUp 0.3s ease;
   position: relative;
+  margin: auto;
 }
 
 .modal-header {
@@ -370,6 +469,8 @@
   color: #95a5a6;
   cursor: pointer;
   transition: color 0.2s;
+  pointer-events: auto;
+  z-index: 1;
 }
 
 .close-modal-btn:hover {
@@ -394,4 +495,40 @@
     transform: translateY(0);
     opacity: 1;
   }
+}
+
+/* Override RecordMatchResult styles when inside modal */
+.modal-content-wrapper .record-match-container {
+  padding: 0;
+  margin: 0;
+  background: none;
+  min-height: auto;
+}
+
+.modal-content-wrapper .record-match-card {
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+}
+
+.modal-content-wrapper .record-match-header {
+  display: none; /* Hide duplicate header */
+}
+
+.modal-content-wrapper .form-section {
+  margin-bottom: 1.5rem;
+}
+
+/* Ensure all form elements in modal are interactive */
+.modal-content-wrapper form,
+.modal-content-wrapper input,
+.modal-content-wrapper select,
+.modal-content-wrapper button,
+.modal-content-wrapper table,
+.modal-content-wrapper .form-control,
+.modal-content-wrapper .btn,
+.modal-content-wrapper .admin-table-wrapper {
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 1;
 }
