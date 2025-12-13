@@ -308,14 +308,14 @@ se104_football/
 | Tính năng          | System Admin | Tournament Admin |  Team Owner  | Viewer |
 | ------------------ | :----------: | :--------------: | :----------: | :----: |
 | Xem Dashboard      |      ✅      |        ✅        |      ✅      |   ✅   |
-| Xem đội bóng       |      ✅      |        ✅        |      ✅      |   ✅   |
-| Đăng ký đội        |      ✅      |        ✅        |      ✅      |   ❌   |
-| Sửa/Xóa đội        |      ✅      |        ✅        | Chỉ đội mình |   ❌   |
-| Quản lý lịch       |      ✅      |        ✅        |      ❌      |   ❌   |
-| Ghi nhận kết quả   |      ✅      |        ✅        |      ❌      |   ❌   |
+| Xem đội bóng       |      ❌      |        ✅        |      ✅      |   ✅   |
+| Đăng ký đội        |      ❌      |        ✅        |      ✅      |   ❌   |
+| Sửa/Xóa đội        |      ❌      |        ✅        |      ❌      |   ❌   |
+| Quản lý lịch       |      ❌     |        ✅        |      ❌      |   ❌   |
+| Ghi nhận kết quả   |      ❌      |        ✅        |      ❌      |   ❌   |
 | Lập báo cáo        |      ❌      |        ✅        |      ❌      |   ❌   |
 | Quản lý người dùng |      ✅      |        ❌        |      ❌      |   ❌   |
-| Cài đặt giải đấu   |      ✅      |        ✅        |      ❌      |   ❌   |
+| Cài đặt giải đấu   |      ❌      |        ✅        |      ❌      |   ❌   |
 
 ---
 
