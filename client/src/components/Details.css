@@ -82,6 +82,35 @@
   gap: 0.75rem;
 }
 
+/* Action Button Styles (from TeamList) */
+.team-action {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 0.85rem;
+}
+
+.team-action.ghost {
+  background: transparent;
+  color: #4a90e2;
+  border: 2px solid #4a90e2;
+}
+
+.team-action.ghost:hover:not(:disabled) {
+  background: #4a90e2;
+  color: white;
+}
+
+.team-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Content Section */
 .details-content {
   background: white;
@@ -178,4 +207,92 @@
   .details-content {
     padding: 1rem;
   }
+}
+/* Modal Overlay and Confirmation Dialog */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.confirmation-dialog {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 450px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.confirmation-dialog h2 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.confirmation-dialog p {
+  margin: 0 0 1.5rem 0;
+  color: #666;
+  line-height: 1.6;
+}
+
+.confirmation-dialog strong {
+  color: #2d7a3e;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.dialog-actions .btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dialog-actions .btn-secondary {
+  background-color: #e0e0e0;
+  color: #333;
+}
+
+.dialog-actions .btn-secondary:hover:not(:disabled) {
+  background-color: #d0d0d0;
+}
+
+.dialog-actions .btn-danger {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.dialog-actions .btn-danger:hover:not(:disabled) {
+  background-color: #c0392b;
+}
+
+.dialog-actions .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

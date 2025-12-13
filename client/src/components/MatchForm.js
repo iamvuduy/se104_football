@@ -78,9 +78,7 @@ const MatchForm = ({
       // I will skip auto-adding for now to be cleaner, or add one if empty?
       // Let's add one if empty ONLY for new forms.
       if (!initialData && goals.length === 0) {
-        setGoals([
-          { player: "", team: "", type: goalTypes[0], time: "", goalCode: "" },
-        ]);
+        setGoals([{ player: "", team: "", type: goalTypes[0], time: "" }]);
       }
     }
   }, [goalTypes, isEditing, initialData]);
@@ -139,7 +137,10 @@ const MatchForm = ({
           date: selectedMatch.date ? selectedMatch.date.split("T")[0] : "",
           time: selectedMatch.time || "",
           stadium: selectedMatch.stadium || "",
+          score: "", // Reset score when selecting a different match
         };
+        // Reset goals when selecting a different match
+        setGoals([]);
       } else {
         newMatchInfo = {
           ...newMatchInfo,
@@ -148,7 +149,10 @@ const MatchForm = ({
           date: "",
           time: "",
           stadium: "",
+          score: "", // Reset score when deselecting
         };
+        // Reset goals when deselecting
+        setGoals([]);
       }
     }
 
@@ -170,10 +174,7 @@ const MatchForm = ({
 
   const handleAddGoal = () => {
     const nextType = goalTypes[0] || "";
-    setGoals([
-      ...goals,
-      { player: "", team: "", type: nextType, time: "", goalCode: "" },
-    ]);
+    setGoals([...goals, { player: "", team: "", type: nextType, time: "" }]);
   };
 
   const handleRemoveGoal = (index) => {
@@ -235,6 +236,16 @@ const MatchForm = ({
         goalValidationError = `Thời điểm ghi bàn ở hàng ${
           idx + 1
         } không hợp lệ (0-${goalTimeLimit}).`;
+        return;
+      }
+
+      // Validate that player belongs to the scoring team
+      const scoringTeamId = parseInt(goal.team, 10);
+      if (
+        scoringTeamId !== parseInt(matchInfo.team1, 10) &&
+        scoringTeamId !== parseInt(matchInfo.team2, 10)
+      ) {
+        goalValidationError = `Đội ghi bàn ở hàng ${idx + 1} không hợp lệ.`;
         return;
       }
     });
@@ -397,7 +408,6 @@ const MatchForm = ({
               <thead>
                 <tr>
                   <th>STT</th>
-                  <th>Mã bàn thắng</th>
                   <th>Đội</th>
                   <th>Cầu thủ</th>
                   <th>Loại bàn thắng</th>
@@ -409,17 +419,6 @@ const MatchForm = ({
                 {goals.map((goal, index) => (
                   <tr key={index}>
                     <td>{index + 1}</td>
-                    <td>
-                      <input
-                        type="text"
-                        name="goalCode"
-                        className="form-control"
-                        value={goal.goalCode || ""}
-                        onChange={(e) => handleGoalChange(index, e)}
-                        placeholder="Mã"
-                        style={{ minWidth: "60px" }}
-                      />
-                    </td>
                     <td>
                       <select
                         name="team"

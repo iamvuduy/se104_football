@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
+import { createPortal } from "react-dom";
 import axios from "axios";
 import "./ScheduleManagement.css";
 import { useAuth } from "../context/AuthContext";
@@ -12,44 +19,147 @@ import {
   FaMapMarkerAlt,
   FaCheckCircle,
   FaExclamationCircle,
+  FaUsers,
+  FaTimes,
+  FaChevronLeft,
+  FaChevronRight,
 } from "react-icons/fa";
 
-// Helper to ensure 24-hour format
-const formatTime24h = (timeStr) => {
-  if (!timeStr) return "";
-  // If already in HH:MM format, return as is
-  if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
-    return timeStr;
-  }
-  // If in 12h format with AM/PM, convert
-  try {
-    const date = new Date(`2000-01-01 ${timeStr}`);
-    return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
-  } catch {
-    return timeStr;
-  }
-};
+const EditScheduleModal = ({ schedule, onClose, onUpdate }) => {
+  const [date, setDate] = useState(schedule.date);
+  const [time, setTime] = useState(schedule.time);
+  const [error, setError] = useState("");
 
+  const handleSubmit = () => {
+    if (!date || !time) {
+      setError("Vui lòng nhập đầy đủ ngày và giờ.");
+      return;
+    }
+    onUpdate({ ...schedule, date, time });
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal-content-wrapper"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal-header">
+          <h2>Chỉnh sửa lịch thi đấu</h2>
+          <button className="close-modal-btn" onClick={onClose}>
+            <FaTimes />
+          </button>
+        </div>
+
+        <div className="modal-body">
+          <h3 className="section-title">Thông tin trận đấu</h3>
+
+          <div className="info-grid">
+            <div className="form-group">
+              <label className="form-label">Đội 1</label>
+              <input
+                type="text"
+                value={schedule.team1_name || schedule.team1_code}
+                disabled
+                className="form-control read-only"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Đội 2</label>
+              <input
+                type="text"
+                value={schedule.team2_name || schedule.team2_code}
+                disabled
+                className="form-control read-only"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Vòng đấu</label>
+              <input
+                type="text"
+                value={schedule.round}
+                disabled
+                className="form-control read-only"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Ngày thi đấu</label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="form-control"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Giờ thi đấu</label>
+              <input
+                type="text"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="form-control"
+                pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
+                placeholder="HH:MM"
+              />
+            </div>
+
+            <div className="form-group full-width">
+              <label className="form-label">Sân thi đấu</label>
+              <input
+                type="text"
+                value={schedule.stadium}
+                disabled
+                className="form-control read-only"
+              />
+            </div>
+          </div>
+          {error && <div className="text-danger mt-2">{error}</div>}
+        </div>
+
+        <div className="modal-footer">
+          <button
+            type="button"
+            onClick={handleSubmit}
+            className="btn btn-primary btn-sm"
+          >
+            Cập nhật
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn btn-secondary btn-sm"
+          >
+            Hủy bỏ
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const ScheduleManagement = () => {
   const { token, canAccessFeature } = useAuth();
   const canManageSchedules = canAccessFeature("manage_schedules");
   const [schedules, setSchedules] = useState([]);
   const [teams, setTeams] = useState([]);
-  const [form, setForm] = useState({
-    matchId: "",
-    round: "",
-    team1_id: "",
-    team2_id: "",
-    date: "",
-    time: "",
-    stadium: "",
-  });
-  const [editingId, setEditingId] = useState(null);
+  const [matches, setMatches] = useState([
+    { round: "", team1_id: "", team2_id: "", date: "", time: "", stadium: "" },
+  ]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+  const endOfMatchesRef = useRef(null);
+
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState(null);
+
+  // Filters for upcoming schedules
+  const [filterRound, setFilterRound] = useState("");
+  const [filterTeam1, setFilterTeam1] = useState("");
+  const [filterTeam2, setFilterTeam2] = useState("");
 
   // Auto-hide toast after 3 seconds
   useEffect(() => {
@@ -125,35 +235,40 @@ const ScheduleManagement = () => {
     loadData();
   }, [axiosConfig, loadData, canManageSchedules]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    let newForm = { ...form, [name]: value };
+  const handleMatchChange = (index, field, value) => {
+    const newMatches = [...matches];
+    newMatches[index] = { ...newMatches[index], [field]: value };
 
-    if (name === "team1_id") {
-      if (value) {
-        const selectedTeam = teams.find((team) => team.id === parseInt(value));
-        if (selectedTeam) {
-          newForm.stadium = selectedTeam.home_stadium;
-        }
-      } else {
-        newForm.stadium = "";
+    // Auto-fill stadium based on team1_id
+    if (field === "team1_id" && value) {
+      const selectedTeam = teams.find((team) => team.id === parseInt(value));
+      if (selectedTeam) {
+        newMatches[index].stadium = selectedTeam.home_stadium;
       }
     }
 
-    setForm(newForm);
+    setMatches(newMatches);
   };
 
-  const resetForm = () => {
-    setForm({
-      matchId: "",
-      round: "",
-      team1_id: "",
-      team2_id: "",
-      date: "",
-      time: "",
-      stadium: "",
-    });
-    setEditingId(null);
+  const handleAddMatch = () => {
+    setMatches([
+      ...matches,
+      {
+        round: "",
+        team1_id: "",
+        team2_id: "",
+        date: "",
+        time: "",
+        stadium: "",
+      },
+    ]);
+    setTimeout(() => {
+      endOfMatchesRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 0);
+  };
+
+  const handleRemoveMatch = (index) => {
+    setMatches(matches.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e) => {
@@ -164,42 +279,35 @@ const ScheduleManagement = () => {
 
     setSaving(true);
     setError("");
-    const url = editingId ? `/api/schedules/${editingId}` : "/api/schedules";
-    const method = editingId ? "put" : "post";
 
     try {
-      await axios[method](url, form, axiosConfig);
+      await axios.post("/api/schedules/batch", { matches }, axiosConfig);
       await loadData();
-      resetForm();
+      setMatches([
+        {
+          round: "",
+          team1_id: "",
+          team2_id: "",
+          date: "",
+          time: "",
+          stadium: "",
+        },
+      ]);
+      setCurrentPage(1);
       setToast({
-        message: editingId ? "Đã cập nhật lịch thi đấu." : "Đã tạo lịch thi đấu mới.",
-        type: "success"
+        message: `Đã tạo ${matches.length} lịch thi đấu mới.`,
+        type: "success",
       });
     } catch (err) {
       console.error("Lỗi khi lưu lịch thi đấu:", err);
       setToast({
-        message: err.response?.data?.error || "Có lỗi xảy ra khi lưu lịch thi đấu.",
+        message:
+          err.response?.data?.error || "Có lỗi xảy ra khi lưu lịch thi đấu.",
         type: "error",
       });
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleEdit = (schedule) => {
-    setEditingId(schedule.id);
-    setForm({
-      matchId: schedule.match_code,
-      round: schedule.round,
-      team1_id: schedule.team1_id,
-      team2_id: schedule.team2_id,
-      date: schedule.date,
-      time: schedule.time,
-      stadium: schedule.stadium,
-    });
-    setError("");
-    setToast(null);
-    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleDelete = async (id) => {
@@ -212,37 +320,99 @@ const ScheduleManagement = () => {
     } catch (err) {
       console.error("Lỗi khi xóa lịch thi đấu:", err);
       setToast({
-        message: err.response?.data?.error || "Có lỗi xảy ra khi xóa lịch thi đấu.",
+        message:
+          err.response?.data?.error || "Có lỗi xảy ra khi xóa lịch thi đấu.",
         type: "error",
       });
     }
   };
 
-  // Pagination for sidebar
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const handleEdit = (schedule) => {
+    setEditingSchedule(schedule);
+    setShowEditModal(true);
+  };
 
-  const totalPages = Math.ceil(schedules.length / itemsPerPage);
+  const handleUpdateSchedule = async (updatedSchedule) => {
+    try {
+      await axios.put(
+        `/api/schedules/${updatedSchedule.id}`,
+        updatedSchedule,
+        axiosConfig
+      );
+      setToast({
+        message: "Cập nhật lịch thi đấu thành công!",
+        type: "success",
+      });
+      setShowEditModal(false);
+      setEditingSchedule(null);
+      loadData();
+    } catch (err) {
+      console.error("Lỗi khi cập nhật lịch thi đấu:", err);
+      setToast({
+        message:
+          err.response?.data?.error ||
+          "Có lỗi xảy ra khi cập nhật lịch thi đấu.",
+        type: "error",
+      });
+    }
+  };
+
+  // Pagination with filters
+  const filteredSchedules = useMemo(() => {
+    let filtered = [...schedules];
+
+    // Filter by round
+    if (filterRound) {
+      filtered = filtered.filter((schedule) => {
+        const scheduleRound = schedule.round?.toString().toLowerCase() || "";
+        const filterValue = filterRound.toLowerCase();
+        return (
+          scheduleRound.includes(filterValue) || scheduleRound === filterValue
+        );
+      });
+    }
+
+    // Filter by team 1
+    if (filterTeam1) {
+      filtered = filtered.filter((schedule) => {
+        return schedule.team1_id === parseInt(filterTeam1);
+      });
+    }
+
+    // Filter by team 2
+    if (filterTeam2) {
+      filtered = filtered.filter((schedule) => {
+        return schedule.team2_id === parseInt(filterTeam2);
+      });
+    }
+
+    return filtered;
+  }, [schedules, filterRound, filterTeam1, filterTeam2]);
+
+  const totalPages = Math.ceil(filteredSchedules.length / itemsPerPage);
   const currentSchedules = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
-    return schedules.slice(start, start + itemsPerPage);
-  }, [schedules, currentPage]);
+    return filteredSchedules.slice(start, start + itemsPerPage);
+  }, [filteredSchedules, currentPage]);
 
-  // Pagination for Main Table
-  const [tablePage, setTablePage] = useState(1);
-  const itemsPerTablePage = 5;
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterRound, filterTeam1, filterTeam2]);
 
-  const totalTablePages = Math.ceil(schedules.length / itemsPerTablePage);
-  const currentTableSchedules = useMemo(() => {
-    const start = (tablePage - 1) * itemsPerTablePage;
-    return schedules.slice(start, start + itemsPerTablePage);
-  }, [schedules, tablePage]);
+  // Get unique rounds for filter dropdown
+  const availableRounds = useMemo(() => {
+    const rounds = [...new Set(schedules.map((s) => s.round).filter(Boolean))];
+    return rounds.sort();
+  }, [schedules]);
 
   if (!token) {
     return (
       <div className="schedule-management-container">
         <div className="schedule-card">
-          <h2><FaCalendarAlt /> Yêu cầu đăng nhập</h2>
+          <h2>
+            <FaCalendarAlt /> Yêu cầu đăng nhập
+          </h2>
           <p>Bạn cần đăng nhập để truy cập chức năng này.</p>
         </div>
       </div>
@@ -253,8 +423,13 @@ const ScheduleManagement = () => {
     return (
       <div className="schedule-management-container">
         <div className="schedule-card">
-          <h2><FaCalendarAlt /> Quyền hạn hạn chế</h2>
-          <p>Bạn không có quyền lập lịch thi đấu. Liên hệ ban điều hành để được cấp quyền.</p>
+          <h2>
+            <FaCalendarAlt /> Quyền hạn hạn chế
+          </h2>
+          <p>
+            Bạn không có quyền lập lịch thi đấu. Liên hệ ban điều hành để được
+            cấp quyền.
+          </p>
         </div>
       </div>
     );
@@ -285,7 +460,11 @@ const ScheduleManagement = () => {
 
       {toast && (
         <div className={`toast-notification toast-${toast.type}`}>
-          {toast.type === "success" ? <FaCheckCircle /> : <FaExclamationCircle />}
+          {toast.type === "success" ? (
+            <FaCheckCircle />
+          ) : (
+            <FaExclamationCircle />
+          )}
           {toast.message}
         </div>
       )}
@@ -295,305 +474,413 @@ const ScheduleManagement = () => {
           <form onSubmit={handleSubmit}>
             <div className="schedule-card">
               <div className="form-section">
-                <h3><FaCalendarAlt /> {editingId ? "Chỉnh sửa lịch đấu" : "Tạo lịch thi đấu"}</h3>
-                <div className="row">
-                  <div className="col-md-3 mb-3">
-                    <label htmlFor="matchId" className="form-label">ID Trận</label>
-                    <input
-                      id="matchId"
-                      name="matchId"
-                      className="form-control"
-                      value={form.matchId}
-                      onChange={handleChange}
-                      placeholder="VD: MATCH001"
-                      required
-                    />
-                  </div>
-                  <div className="col-md-3 mb-3">
-                    <label htmlFor="round" className="form-label">Vòng thi đấu</label>
-                    <input
-                      id="round"
-                      name="round"
-                      className="form-control"
-                      value={form.round}
-                      onChange={handleChange}
-                      placeholder="VD: Vòng 1"
-                      required
-                    />
-                  </div>
-                  <div className="col-md-3 mb-3">
-                    <label htmlFor="date" className="form-label">Ngày</label>
-                    <input
-                      id="date"
-                      name="date"
-                      className="form-control"
-                      value={form.date}
-                      onChange={handleChange}
-                      type="date"
-                      required
-                    />
-                  </div>
-                  <div className="col-md-3 mb-3">
-                    <label htmlFor="time" className="form-label">Giờ</label>
-                    <input
-                      id="time"
-                      name="time"
-                      className="form-control"
-                      value={form.time}
-                      onChange={handleChange}
-                      type="text"
-                      pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
-                      placeholder="VD: 01:00"
-                      title="Nhập giờ theo định dạng 24 giờ (VD: 14:30)"
-                      required
-                    />
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <label htmlFor="team1_id" className="form-label">Đội 1 (sân nhà)</label>
-                    <select
-                      id="team1_id"
-                      name="team1_id"
-                      className="form-control"
-                      value={form.team1_id}
-                      onChange={handleChange}
-                      required
-                    >
-                      <option value="">Chọn đội 1</option>
-                      {teams.map((team) => (
-                        <option key={team.id} value={team.id}>
-                          [{team.team_code}] {team.name}
-                        </option>
+                <h3 className="mt-0 mb-3">
+                  <FaCalendarAlt /> Tạo lịch thi đấu
+                </h3>
+
+                <div className="table-responsive">
+                  <table
+                    className="table schedule-table"
+                    style={{ marginBottom: 0 }}
+                  >
+                    <thead>
+                      <tr>
+                        <th style={{ width: "5%" }}>STT</th>
+                        <th style={{ width: "15%" }}>Vòng Thi Đấu</th>
+                        <th style={{ width: "20%" }}>Đội 1</th>
+                        <th style={{ width: "20%" }}>Đội 2</th>
+                        <th style={{ width: "12%" }}>Ngày</th>
+                        <th style={{ width: "8%" }}>Giờ</th>
+                        <th style={{ width: "15%" }}>Sân</th>
+                        <th style={{ width: "5%" }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {matches.map((match, index) => (
+                        <tr key={index}>
+                          <td className="text-center">{index + 1}</td>
+                          <td>
+                            <input
+                              type="text"
+                              className="form-control form-control-sm"
+                              value={match.round}
+                              onChange={(e) =>
+                                handleMatchChange(
+                                  index,
+                                  "round",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="VD: Vòng 1"
+                              required
+                            />
+                          </td>
+                          <td>
+                            <select
+                              className="form-select form-select-sm"
+                              value={match.team1_id}
+                              onChange={(e) =>
+                                handleMatchChange(
+                                  index,
+                                  "team1_id",
+                                  e.target.value
+                                )
+                              }
+                              required
+                            >
+                              <option value="">Chọn đội 1</option>
+                              {teams.map((team) => (
+                                <option key={team.id} value={team.id}>
+                                  [{team.team_code}] {team.name}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td>
+                            <select
+                              className="form-select form-select-sm"
+                              value={match.team2_id}
+                              onChange={(e) =>
+                                handleMatchChange(
+                                  index,
+                                  "team2_id",
+                                  e.target.value
+                                )
+                              }
+                              disabled={!match.team1_id}
+                              required
+                            >
+                              <option value="">Chọn đội 2</option>
+                              {teams.map((team) => (
+                                <option
+                                  key={team.id}
+                                  value={team.id}
+                                  disabled={
+                                    String(team.id) === String(match.team1_id)
+                                  }
+                                >
+                                  [{team.team_code}] {team.name}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td>
+                            <input
+                              type="date"
+                              className="form-control form-control-sm"
+                              value={match.date}
+                              onChange={(e) =>
+                                handleMatchChange(index, "date", e.target.value)
+                              }
+                              required
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              className="form-control form-control-sm"
+                              value={match.time}
+                              onChange={(e) =>
+                                handleMatchChange(index, "time", e.target.value)
+                              }
+                              placeholder="VD: 14:30"
+                              pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
+                              title="Nhập giờ theo định dạng 24 giờ"
+                              required
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              className="form-control form-control-sm"
+                              value={match.stadium}
+                              onChange={(e) =>
+                                handleMatchChange(
+                                  index,
+                                  "stadium",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="Sân nhà đội 1"
+                              readOnly
+                            />
+                          </td>
+                          <td className="text-center">
+                            <button
+                              type="button"
+                              className="btn btn-danger btn-sm"
+                              onClick={() => handleRemoveMatch(index)}
+                              disabled={matches.length === 1}
+                            >
+                              <FaTrash />
+                            </button>
+                          </td>
+                        </tr>
                       ))}
-                    </select>
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <label htmlFor="team2_id" className="form-label">Đội 2 (khách)</label>
-                    <select
-                      id="team2_id"
-                      name="team2_id"
-                      className="form-control"
-                      value={form.team2_id}
-                      onChange={handleChange}
-                      required
-                    >
-                      <option value="">Chọn đội 2</option>
-                      {teams.map((team) => (
-                        <option
-                          key={team.id}
-                          value={team.id}
-                          disabled={String(team.id) === String(form.team1_id)}
-                        >
-                          [{team.team_code}] {team.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="col-12 mb-3">
-                    <label htmlFor="stadium" className="form-label">Sân thi đấu</label>
-                    <input
-                      id="stadium"
-                      name="stadium"
-                      className="form-control"
-                      value={form.stadium}
-                      onChange={handleChange}
-                      placeholder="Tự động điền theo đội 1"
-                      readOnly
-                      required
-                    />
-                  </div>
+                      <tr>
+                        <td style={{ padding: 0 }} colSpan="8">
+                          <div ref={endOfMatchesRef} />
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
 
-                <div className="action-buttons">
-                  {editingId && (
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={resetForm}
-                    >
-                      Hủy chỉnh sửa
-                    </button>
-                  )}
+                <div className="d-flex justify-content-between align-items-center mt-3">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={handleAddMatch}
+                  >
+                    <FaPlus /> Thêm trận
+                  </button>
                   <button
                     type="submit"
-                    className="btn btn-primary"
+                    className="btn btn-primary btn-lg"
                     disabled={saving}
                   >
-                    <FaPlus /> {editingId ? "Cập nhật" : "Thêm lịch"}
+                    <FaCheckCircle /> Lưu {matches.length} trận đấu
                   </button>
                 </div>
               </div>
             </div>
           </form>
-
-          <div className="schedule-card" style={{ marginTop: "1.5rem" }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '2px solid #f0f3f7', color: '#1a2332' }}>
-              <FaCalendarAlt /> Danh sách lịch thi đấu
-            </h3>
-            <div className="schedule-table-wrapper">
-              <table className="schedule-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: "50px" }}>STT</th>
-                    <th>Mã</th>
-                    <th>Vòng</th>
-                    <th>Đội 1</th>
-                    <th>Đội 2</th>
-                    <th>Ngày giờ</th>
-                    <th>Sân</th>
-                    <th style={{ width: "150px", textAlign: "center" }}>Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {schedules.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="empty-state">
-                        <p>Chưa có lịch thi đấu nào được tạo.</p>
-                      </td>
-                    </tr>
-                  ) : (
-                    currentTableSchedules.map((schedule, index) => (
-                      <tr key={schedule.id}>
-                        <td style={{ textAlign: "center", fontWeight: 600 }}>
-                          {(tablePage - 1) * itemsPerTablePage + index + 1}
-                        </td>
-                        <td><strong>{schedule.match_code}</strong></td>
-                        <td>{schedule.round}</td>
-                        <td>
-                          {schedule.team1_code ? `[${schedule.team1_code}] ` : ""}
-                          {schedule.team1_name}
-                        </td>
-                        <td>
-                          {schedule.team2_code ? `[${schedule.team2_code}] ` : ""}
-                          {schedule.team2_name}
-                        </td>
-                        <td style={{ whiteSpace: "nowrap" }}>
-                          {new Date(schedule.date).toLocaleDateString("vi-VN")} {formatTime24h(schedule.time)}
-                        </td>
-                        <td>{schedule.stadium}</td>
-                        <td>
-                          <div style={{ display: 'flex', gap: '0.3rem', justifyContent: 'center' }}>
-                            <button
-                              type="button"
-                              className="btn btn-secondary btn-sm"
-                              onClick={() => handleEdit(schedule)}
-                            >
-                              <FaEdit />
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-danger btn-sm"
-                              onClick={() => handleDelete(schedule.id)}
-                            >
-                              <FaTrash />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Table Pagination */}
-            {totalTablePages > 1 && (
-              <div className="pagination-container">
-                <button 
-                  className="pagination-btn" 
-                  onClick={() => setTablePage(prev => Math.max(prev - 1, 1))}
-                  disabled={tablePage === 1}
-                >
-                  &lt;
-                </button>
-                
-                <div className="pagination-pages">
-                  {Array.from({ length: totalTablePages }, (_, i) => i + 1).map(page => (
-                    <button
-                      key={page}
-                      className={`pagination-page ${tablePage === page ? 'active' : ''}`}
-                      onClick={() => setTablePage(page)}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                </div>
-
-                <button 
-                  className="pagination-btn" 
-                  onClick={() => setTablePage(prev => Math.min(prev + 1, totalTablePages))}
-                  disabled={tablePage === totalTablePages}
-                >
-                  &gt;
-                </button>
-              </div>
-            )}
-          </div>
         </div>
 
         <div className="col-lg-4">
           <div className="schedule-card">
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', borderBottom: '3px solid #4a90e2', paddingBottom: '1rem', color: '#1a2332' }}>
-              Lịch sắp diễn ra
+            <h3
+              style={{
+                fontSize: "1.1rem",
+                fontWeight: 600,
+                marginBottom: "1rem",
+              }}
+            >
+              <FaCalendarAlt /> Lịch sắp diễn ra
             </h3>
-            {schedules.length === 0 ? (
-              <p className="text-muted text-center py-4">Chưa có lịch thi đấu nào.</p>
+
+            {/* Filter controls */}
+            <div style={{ marginBottom: "1rem" }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "0.5rem",
+                  alignItems: "flex-end",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <label
+                    className="form-label"
+                    style={{
+                      fontSize: "0.85rem",
+                      marginBottom: "0.25rem",
+                      display: "block",
+                    }}
+                  >
+                    Vòng:
+                  </label>
+                  <select
+                    className="form-select form-select-sm"
+                    value={filterRound}
+                    onChange={(e) => setFilterRound(e.target.value)}
+                  >
+                    <option value="">Tất cả</option>
+                    {availableRounds.map((round) => (
+                      <option key={round} value={round}>
+                        {round}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ flex: 1 }}>
+                  <label
+                    className="form-label"
+                    style={{
+                      fontSize: "0.85rem",
+                      marginBottom: "0.25rem",
+                      display: "block",
+                    }}
+                  >
+                    Đội 1:
+                  </label>
+                  <select
+                    className="form-select form-select-sm"
+                    value={filterTeam1}
+                    onChange={(e) => setFilterTeam1(e.target.value)}
+                  >
+                    <option value="">Tất cả</option>
+                    {teams.map((team) => (
+                      <option key={team.id} value={team.id}>
+                        {team.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ flex: 1 }}>
+                  <label
+                    className="form-label"
+                    style={{
+                      fontSize: "0.85rem",
+                      marginBottom: "0.25rem",
+                      display: "block",
+                    }}
+                  >
+                    Đội 2:
+                  </label>
+                  <select
+                    className="form-select form-select-sm"
+                    value={filterTeam2}
+                    onChange={(e) => setFilterTeam2(e.target.value)}
+                  >
+                    <option value="">Tất cả</option>
+                    {teams.map((team) => (
+                      <option key={team.id} value={team.id}>
+                        {team.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {(filterRound || filterTeam1 || filterTeam2) && (
+                  <button
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => {
+                      setFilterRound("");
+                      setFilterTeam1("");
+                      setFilterTeam2("");
+                    }}
+                    title="Xóa bộ lọc"
+                    style={{ flexShrink: 0 }}
+                  >
+                    <FaSyncAlt />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {filteredSchedules.length === 0 ? (
+              <p style={{ color: "#666", textAlign: "center" }}>
+                {schedules.length === 0
+                  ? "Chưa có lịch thi đấu."
+                  : "Không tìm thấy trận đấu phù hợp."}
+              </p>
             ) : (
               <>
-                <div className="recent-schedules-list">
+                <div>
                   {currentSchedules.map((schedule) => (
-                    <div key={schedule.id} className="recent-schedule-item">
-                      <div className="schedule-item-content">
-                        <div className="schedule-item-teams">
-                          <span>{schedule.team1_name}</span>
-                          <span className="schedule-vs">VS</span>
-                          <span>{schedule.team2_name}</span>
+                    <div key={schedule.id} className="upcoming-match-card">
+                      <div className="card-actions">
+                        <button
+                          type="button"
+                          className="action-btn edit-btn"
+                          onClick={() => handleEdit(schedule)}
+                          title="Sửa trận đấu"
+                        >
+                          <FaEdit />
+                        </button>
+                        <button
+                          type="button"
+                          className="action-btn delete-btn"
+                          onClick={() => handleDelete(schedule.id)}
+                          title="Xóa trận đấu"
+                        >
+                          <FaTrash />
+                        </button>
+                      </div>
+
+                      <div className="match-teams">
+                        <span className="team-name" title={schedule.team1_name}>
+                          {schedule.team1_name || schedule.team1_code}
+                        </span>
+                        <div className="d-flex flex-column align-items-center">
+                          <span className="vs-badge">VS</span>
+                          {schedule.round && (
+                            <span
+                              style={{
+                                fontSize: "0.75rem",
+                                marginTop: "0.25rem",
+                                fontWeight: "normal",
+                                opacity: 0.9,
+                              }}
+                            >
+                              {schedule.round
+                                .toString()
+                                .toLowerCase()
+                                .startsWith("vòng")
+                                ? schedule.round
+                                : `Vòng ${schedule.round}`}
+                            </span>
+                          )}
                         </div>
-                        <div className="schedule-item-meta">
-                          <span className="schedule-meta-item">
-                            <FaCalendarAlt /> {new Date(schedule.date).toLocaleDateString('vi-VN')}
-                          </span>
-                          <span className="meta-separator">•</span>
-                          <span className="schedule-meta-item">
-                            <FaClock /> {formatTime24h(schedule.time)}
-                          </span>
-                          <span className="meta-separator">•</span>
-                          <span className="schedule-meta-item">
-                            <FaMapMarkerAlt /> {schedule.stadium?.substring(0, 20)}
-                          </span>
+                        <span
+                          className="team-name right"
+                          title={schedule.team2_name}
+                        >
+                          {schedule.team2_name || schedule.team2_code}
+                        </span>
+                      </div>
+
+                      {schedule.match_code && (
+                        <div className="match-code-display">
+                          {schedule.match_code}
+                        </div>
+                      )}
+
+                      <div className="match-info-row">
+                        <div className="match-info-item">
+                          <FaCalendarAlt /> {schedule.date}
+                        </div>
+                        <div className="match-info-item">
+                          <FaClock /> {schedule.time}
+                        </div>
+                        <div className="match-info-item">
+                          <FaMapMarkerAlt /> {schedule.stadium}
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
-                
+
                 {totalPages > 1 && (
-                  <div className="pagination-container">
-                    <button 
-                      className="pagination-btn" 
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  <div style={{ marginTop: "1rem", textAlign: "center" }}>
+                    <button
+                      className="btn btn-sm btn-outline-secondary"
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(prev - 1, 1))
+                      }
                       disabled={currentPage === 1}
+                      style={{ margin: "0.25rem" }}
                     >
-                      &lt;
+                      <FaChevronLeft />
                     </button>
-                    
-                    <div className="pagination-pages">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                      (page) => (
                         <button
                           key={page}
-                          className={`pagination-page ${currentPage === page ? 'active' : ''}`}
+                          className={`btn btn-sm ${
+                            currentPage === page
+                              ? "btn-primary"
+                              : "btn-outline-secondary"
+                          }`}
                           onClick={() => setCurrentPage(page)}
+                          style={{ margin: "0.25rem" }}
                         >
                           {page}
                         </button>
-                      ))}
-                    </div>
-
-                    <button 
-                      className="pagination-btn" 
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      )
+                    )}
+                    <button
+                      className="btn btn-sm btn-outline-secondary"
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                      }
                       disabled={currentPage === totalPages}
+                      style={{ margin: "0.25rem" }}
                     >
-                      &gt;
+                      <FaChevronRight />
                     </button>
                   </div>
                 )}
@@ -602,6 +889,16 @@ const ScheduleManagement = () => {
           </div>
         </div>
       </div>
+      {showEditModal && editingSchedule && (
+        <EditScheduleModal
+          schedule={editingSchedule}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingSchedule(null);
+          }}
+          onSave={handleUpdateSchedule}
+        />
+      )}
     </div>
   );
 };

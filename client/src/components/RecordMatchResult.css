@@ -1,3 +1,55 @@
+/* Alerts & Toasts */
+.admin-alert {
+  padding: 1rem;
+  border-radius: 8px;
+  background: #fee2e2;
+  color: #b91c1c;
+  border-left: 4px solid #ef4444;
+  margin-bottom: 1.5rem;
+  cursor: pointer;
+  animation: slideIn 0.3s ease;
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.admin-toast {
+  position: fixed;
+  top: 6rem;
+  right: 2rem;
+  background: #10b981;
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+  font-weight: 600;
+  z-index: 100;
+  animation: slideDown 0.3s ease;
+  cursor: pointer;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Record Match Result - Modern Form */
 .record-match-container,
 .admin-panel-container {
@@ -203,6 +255,21 @@
   color: #7f8c8d;
 }
 
+/* Readonly field style for locked goal code */
+.form-control.readonly-field,
+.form-control[readonly] {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+  color: #6c757d;
+  border-color: #ced4da;
+}
+
+.form-control.readonly-field:focus,
+.form-control[readonly]:focus {
+  border-color: #ced4da;
+  box-shadow: none;
+}
+
 .btn-group {
   display: flex;
   gap: 1rem;
@@ -239,6 +306,13 @@
   box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
 }
 
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 .btn-secondary {
   background: #6c757d;
   color: white;
@@ -246,6 +320,11 @@
 
 .btn-secondary:hover {
   background: #5a6268;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .btn-danger {

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import NotificationModal from "./NotificationModal";
 import { useAuth } from "../context/AuthContext";
 import "./Details.css";
-import { FaFutbol, FaUsers, FaEdit, FaTrash } from "react-icons/fa";
+import { FaFutbol, FaUsers } from "react-icons/fa";
 
 const TeamDetails = () => {
   const [team, setTeam] = useState(null);
@@ -18,65 +18,48 @@ const TeamDetails = () => {
     type: "",
     message: "",
   });
-  const { token, canAccessFeature } = useAuth();
-  const canManageTeams = canAccessFeature("manage_teams");
+  const { token } = useAuth();
 
   const handleCloseNotification = () => {
     setNotification({ isOpen: false, type: "", message: "" });
     if (
       notification.type === "success" &&
-      notification.message.includes("deleted")
+      notification.message.includes("thành công")
     ) {
-      navigate("/teams");
+      setTimeout(() => navigate("/teams"), 500);
     }
   };
 
-  useEffect(() => {
-    const fetchTeamDetails = async () => {
-      try {
-        const response = await axios.get(`/api/teams/${id}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        setTeam(response.data);
-        setPlayers(response.data.players || []);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchTeamDetails = async () => {
+    try {
+      const response = await axios.get(`/api/teams/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setTeam(response.data);
+      setPlayers(response.data.players || []);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  const handleRefresh = async () => {
+    setLoading(true);
+    await fetchTeamDetails();
+  };
+
+  useEffect(() => {
     if (token) {
+      setLoading(true);
       fetchTeamDetails();
     } else {
       setLoading(false);
     }
   }, [id, token]);
-
-  const handleDelete = async () => {
-    if (window.confirm("Are you sure you want to delete this team?")) {
-      try {
-        await axios.delete(`/api/teams/${id}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        setNotification({
-          isOpen: true,
-          type: "success",
-          message: "Team deleted successfully!",
-        });
-      } catch (err) {
-        setNotification({
-          isOpen: true,
-          type: "error",
-          message: "Failed to delete team.",
-        });
-      }
-    }
-  };
 
   if (loading)
     return (
@@ -100,12 +83,12 @@ const TeamDetails = () => {
   return (
     <div className="details-container">
       <NotificationModal
-        isOpen={notification.isOpen}
+        show={notification.isOpen}
         type={notification.type}
         message={notification.message}
         onClose={handleCloseNotification}
       />
-      
+
       {/* Hero Section */}
       <div className="team-hero">
         <div className="team-info">
@@ -119,16 +102,13 @@ const TeamDetails = () => {
             </div>
           </div>
         </div>
-        {canManageTeams && (
-          <div className="team-actions">
-            <Link to={`/teams/${id}/edit`} className="btn btn-primary">
-              <FaEdit /> Sửa
-            </Link>
-            <button onClick={handleDelete} className="btn btn-danger">
-              <FaTrash /> Xóa
-            </button>
-          </div>
-        )}
+        <button
+          className="team-action ghost"
+          onClick={handleRefresh}
+          disabled={loading}
+        >
+          {loading ? "Đang tải..." : "Tải lại"}
+        </button>
       </div>
 
       {/* Content Section */}

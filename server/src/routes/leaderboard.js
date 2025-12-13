@@ -4,6 +4,43 @@ const db = require("../database");
 const { loadSettings } = require("../services/settingsService");
 const reportService = require("../services/reportService");
 
+// DEBUG ENDPOINT - Cleanup orphaned goals (no auth, for development only)
+router.get("/debug/cleanup-now", (req, res) => {
+  const isLocalhost =
+    req.ip === "127.0.0.1" ||
+    req.ip === "::1" ||
+    req.ip.includes("localhost") ||
+    req.ip === "::ffff:127.0.0.1";
+
+  if (process.env.NODE_ENV === "production" && !isLocalhost) {
+    return res.status(403).json({ error: "Not allowed in production" });
+  }
+
+  db.run(
+    `DELETE FROM goals 
+     WHERE match_result_id NOT IN (SELECT id FROM match_results)`,
+    [],
+    function (err) {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+
+      const deletedCount = this.changes;
+
+      // Also clear all reports cache
+      db.run("DELETE FROM leaderboard_reports", [], (err) => {
+        if (err) {
+          console.error("Error clearing reports:", err);
+        }
+        res.json({
+          message: `Đã xóa ${deletedCount} goals không hợp lệ. Hãy refresh trình duyệt để thấy kết quả!`,
+          deletedCount: deletedCount,
+        });
+      });
+    }
+  );
+});
+
 // GET /api/leaderboard/teams - Get team leaderboard
 router.get("/teams", async (req, res) => {
   try {
@@ -338,6 +375,7 @@ router.get("/top-scorers", async (req, res) => {
         FROM goals g
         JOIN players p ON g.player_id = p.id
         JOIN teams t ON g.team_id = t.id
+        JOIN match_results mr ON g.match_result_id = mr.id
         GROUP BY p.id
         ORDER BY goals DESC
     `;
@@ -880,6 +918,87 @@ router.get("/reports/status/all", async (req, res) => {
   } catch (error) {
     console.error("Error fetching report status:", error);
     res.status(500).json({ error: "Lỗi khi lấy trạng thái báo cáo" });
+  }
+});
+
+// DELETE /api/leaderboard/cleanup-orphaned-goals - Remove goals without corresponding match results
+// Only for tournament admin
+router.delete(
+  "/cleanup-orphaned-goals",
+  require("../middleware/admin"),
+  async (req, res) => {
+    try {
+      const result = await new Promise((resolve, reject) => {
+        db.run(
+          `DELETE FROM goals 
+         WHERE match_result_id NOT IN (SELECT id FROM match_results)`,
+          [],
+          function (err) {
+            if (err) reject(err);
+            else resolve(this.changes);
+          }
+        );
+      });
+
+      // Also clear all reports cache
+      await new Promise((resolve, reject) => {
+        db.run("DELETE FROM leaderboard_reports", [], (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
+      res.json({
+        message: `Đã xóa ${result} goals không hợp lệ`,
+        deletedCount: result,
+      });
+    } catch (error) {
+      console.error("Error cleaning up orphaned goals:", error);
+      res.status(500).json({ error: "Lỗi khi dọn dẹp goals" });
+    }
+  }
+);
+
+// GET /api/leaderboard/debug/cleanup-now - Emergency cleanup without auth (for development)
+router.get("/debug/cleanup-now", async (req, res) => {
+  try {
+    // Check if running in development mode or from localhost
+    const isLocalhost =
+      req.ip === "127.0.0.1" ||
+      req.ip === "::1" ||
+      req.ip.includes("localhost");
+
+    if (process.env.NODE_ENV === "production" && !isLocalhost) {
+      return res.status(403).json({ error: "Not allowed in production" });
+    }
+
+    const result = await new Promise((resolve, reject) => {
+      db.run(
+        `DELETE FROM goals 
+         WHERE match_result_id NOT IN (SELECT id FROM match_results)`,
+        [],
+        function (err) {
+          if (err) reject(err);
+          else resolve(this.changes);
+        }
+      );
+    });
+
+    // Also clear all reports cache
+    await new Promise((resolve, reject) => {
+      db.run("DELETE FROM leaderboard_reports", [], (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    res.json({
+      message: `Đã xóa ${result} goals không hợp lệ. Hãy refresh trình duyệt để thấy kết quả!`,
+      deletedCount: result,
+    });
+  } catch (error) {
+    console.error("Error cleaning up orphaned goals:", error);
+    res.status(500).json({ error: error.message });
   }
 });
 

@@ -289,19 +289,6 @@ const Home = () => {
                 Chào mừng trở lại{user?.username ? `, ${user.username}` : "!"}
               </h1>
               <div className="home-hero-actions">
-                {canAccessFeature("view_teams") && (
-                  <Link to="/teams" className="home-hero-button is-primary">
-                    Xem danh sách đội
-                  </Link>
-                )}
-                {canAccessFeature("view_leaderboards") && (
-                  <Link
-                    to="/team-leaderboard"
-                    className="home-hero-button is-ghost"
-                  >
-                    Xem bảng xếp hạng
-                  </Link>
-                )}
                 <button
                   type="button"
                   className="home-hero-button is-ghost"

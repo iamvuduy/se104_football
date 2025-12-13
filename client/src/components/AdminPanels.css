@@ -197,6 +197,20 @@
   color: #dc2626;
 }
 
+.admin-btn.is-warning {
+  background: #ffc107;
+  color: #333;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+}
+
+.admin-btn.is-warning:hover {
+  background: #e0a800;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+}
+
 .admin-btn.is-icon {
   padding: 0.5rem;
   border-radius: 8px;
@@ -281,7 +295,7 @@
 
 .admin-toast {
   position: fixed;
-  bottom: 2rem;
+  top: 6rem;
   right: 2rem;
   background: #10b981;
   color: white;

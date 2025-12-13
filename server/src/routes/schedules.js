@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const db = require("../database");
 const admin = require("../middleware/admin");
+const { generateMatchId } = require("../services/idGeneratorService");
 
 // Get all schedules
 router.get("/", (req, res) => {
@@ -76,8 +77,117 @@ router.get("/:id", (req, res) => {
   );
 });
 
+// Create multiple schedules (Batch)
+router.post("/batch", admin, async (req, res) => {
+  const { matches } = req.body;
+
+  if (!matches || !Array.isArray(matches) || matches.length === 0) {
+    return res.status(400).json({ error: "Danh sách trận đấu không hợp lệ." });
+  }
+
+  let successCount = 0;
+  let failCount = 0;
+  const errors = [];
+
+  // Helper to promisify db.get
+  const dbGet = (sql, params) => {
+    return new Promise((resolve, reject) => {
+      db.get(sql, params, (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+  };
+
+  // Helper to promisify db.run
+  const dbRun = (sql, params) => {
+    return new Promise((resolve, reject) => {
+      db.run(sql, params, function (err) {
+        if (err) reject(err);
+        else resolve(this);
+      });
+    });
+  };
+
+  for (let i = 0; i < matches.length; i++) {
+    const match = matches[i];
+    const { round, team1_id, team2_id, date, time, stadium } = match;
+    const team1Id = Number(team1_id);
+    const team2Id = Number(team2_id);
+
+    try {
+      if (!team1Id || !team2Id) {
+        throw new Error(`Trận #${i + 1}: Vui lòng chọn đầy đủ hai đội.`);
+      }
+
+      if (team1Id === team2Id) {
+        throw new Error(`Trận #${i + 1}: Hai đội phải khác nhau.`);
+      }
+
+      // Check teams exist
+      const t1 = await dbGet(`SELECT id FROM teams WHERE id = ?`, [team1Id]);
+      if (!t1) throw new Error(`Trận #${i + 1}: Đội 1 không tồn tại.`);
+
+      const t2 = await dbGet(`SELECT id FROM teams WHERE id = ?`, [team2Id]);
+      if (!t2) throw new Error(`Trận #${i + 1}: Đội 2 không tồn tại.`);
+
+      // Check existing match
+      const existingMatch = await dbGet(
+        `SELECT id FROM schedules WHERE team1_id = ? AND team2_id = ?`,
+        [team1Id, team2Id]
+      );
+      if (existingMatch) {
+        throw new Error(
+          `Trận #${i + 1}: Cặp đấu này đã tồn tại trong giải đấu.`
+        );
+      }
+
+      // Check team in round
+      const teamInRound = await dbGet(
+        `SELECT id FROM schedules WHERE round = ? AND (team1_id = ? OR team2_id = ? OR team1_id = ? OR team2_id = ?)`,
+        [round, team1Id, team1Id, team2Id, team2Id]
+      );
+      if (teamInRound) {
+        throw new Error(
+          `Trận #${
+            i + 1
+          }: Một trong hai đội đã có lịch thi đấu trong vòng ${round}.`
+        );
+      }
+
+      // Generate ID and Insert
+      const matchCode = await generateMatchId();
+      await dbRun(
+        `INSERT INTO schedules (match_code, round, matchOrder, team1_id, team2_id, date, time, stadium) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [matchCode, round, 1, team1Id, team2Id, date, time, stadium]
+      );
+
+      successCount++;
+    } catch (err) {
+      failCount++;
+      errors.push(err.message);
+    }
+  }
+
+  if (failCount > 0 && successCount === 0) {
+    return res.status(400).json({
+      error: "Không thể tạo lịch thi đấu.",
+      details: errors,
+    });
+  }
+
+  res.json({
+    message: "success",
+    data: {
+      success: successCount,
+      failed: failCount,
+      errors: errors,
+    },
+  });
+});
+
 // Create a new schedule
-router.post("/", admin, (req, res) => {
+router.post("/", admin, async (req, res) => {
   const { round, matchOrder, team1_id, team2_id, date, time, stadium } =
     req.body;
   const team1Id = Number(team1_id);
@@ -126,12 +236,10 @@ router.post("/", admin, (req, res) => {
                 return res.status(500).json({ error: err.message });
               }
               if (existingMatch) {
-                return res
-                  .status(400)
-                  .json({
-                    error:
-                      "Cặp đấu này (Đội 1 vs Đội 2) đã tồn tại trong giải đấu.",
-                  });
+                return res.status(400).json({
+                  error:
+                    "Cặp đấu này (Đội 1 vs Đội 2) đã tồn tại trong giải đấu.",
+                });
               }
 
               // Check if either team already has a match in this round
@@ -143,33 +251,16 @@ router.post("/", admin, (req, res) => {
                     return res.status(500).json({ error: err.message });
                   }
                   if (teamInRound) {
-                    return res
-                      .status(400)
-                      .json({
-                        error:
-                          "Một trong hai đội đã có lịch thi đấu trong vòng này.",
-                      });
+                    return res.status(400).json({
+                      error:
+                        "Một trong hai đội đã có lịch thi đấu trong vòng này.",
+                    });
                   }
 
-                  // Use provided matchId or fallback to auto-generated format
-                  const matchCode =
-                    req.body.matchId || `${team1.team_code}_${team2.team_code}`;
-
-                  // Check if match_code already exists
-                  db.get(
-                    `SELECT id FROM schedules WHERE match_code = ?`,
-                    [matchCode],
-                    (err, existingCode) => {
-                      if (err) {
-                        return res.status(500).json({ error: err.message });
-                      }
-                      if (existingCode) {
-                        return res
-                          .status(400)
-                          .json({
-                            error: `Mã trận đấu '${matchCode}' đã tồn tại.`,
-                          });
-                      }
+                  // Auto-generate Match ID
+                  (async () => {
+                    try {
+                      const autoMatchCode = await generateMatchId();
 
                       // Default matchOrder to 1 if not provided
                       const finalMatchOrder = matchOrder || 1;
@@ -180,7 +271,7 @@ router.post("/", admin, (req, res) => {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `,
                         [
-                          matchCode,
+                          autoMatchCode,
                           round,
                           finalMatchOrder,
                           team1Id,
@@ -196,12 +287,19 @@ router.post("/", admin, (req, res) => {
                           }
                           res.json({
                             message: "success",
-                            data: { id: this.lastID, match_code: matchCode },
+                            data: {
+                              id: this.lastID,
+                              match_code: autoMatchCode,
+                            },
                           });
                         }
                       );
+                    } catch (err) {
+                      return res
+                        .status(500)
+                        .json({ error: "Không thể tạo mã trận đấu." });
                     }
-                  );
+                  })();
                 }
               );
             }
@@ -262,12 +360,10 @@ router.put("/:id", admin, (req, res) => {
                 return res.status(500).json({ error: err.message });
               }
               if (existingMatch) {
-                return res
-                  .status(400)
-                  .json({
-                    error:
-                      "Cặp đấu này (Đội 1 vs Đội 2) đã tồn tại trong giải đấu.",
-                  });
+                return res.status(400).json({
+                  error:
+                    "Cặp đấu này (Đội 1 vs Đội 2) đã tồn tại trong giải đấu.",
+                });
               }
 
               // Check if either team already has a match in this round (excluding current match)
@@ -279,12 +375,10 @@ router.put("/:id", admin, (req, res) => {
                     return res.status(500).json({ error: err.message });
                   }
                   if (teamInRound) {
-                    return res
-                      .status(400)
-                      .json({
-                        error:
-                          "Một trong hai đội đã có lịch thi đấu trong vòng này.",
-                      });
+                    return res.status(400).json({
+                      error:
+                        "Một trong hai đội đã có lịch thi đấu trong vòng này.",
+                    });
                   }
 
                   // Use provided matchId or fallback to auto-generated format
@@ -300,11 +394,9 @@ router.put("/:id", admin, (req, res) => {
                         return res.status(500).json({ error: err.message });
                       }
                       if (existingCode) {
-                        return res
-                          .status(400)
-                          .json({
-                            error: `Mã trận đấu '${matchCode}' đã tồn tại.`,
-                          });
+                        return res.status(400).json({
+                          error: `Mã trận đấu '${matchCode}' đã tồn tại.`,
+                        });
                       }
 
                       // Default matchOrder to 1 if not provided
@@ -408,11 +500,9 @@ router.delete("/:id", admin, (req, res) => {
                   matchResultIds,
                   (err) => {
                     if (err) {
-                      return res
-                        .status(500)
-                        .json({
-                          error: "Lỗi khi xóa kết quả trận đấu: " + err.message,
-                        });
+                      return res.status(500).json({
+                        error: "Lỗi khi xóa kết quả trận đấu: " + err.message,
+                      });
                     }
 
                     // Finally delete the schedule

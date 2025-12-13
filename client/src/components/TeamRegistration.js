@@ -34,9 +34,9 @@ const TeamRegistration = () => {
   // State for the form
   const [teamName, setTeamName] = useState("");
   const [homeStadium, setHomeStadium] = useState("");
-  const [teamCode, setTeamCode] = useState("");
+  // teamCode được tự sinh từ backend - không cần nhập từ client
   const [players, setPlayers] = useState([
-    { playerCode: "", name: "", dob: "", type: "Trong nước", notes: "" },
+    { name: "", dob: "", type: "Trong nước", notes: "" },
   ]);
   const [settings, setSettings] = useState(null);
   const calculateAge = (dob) => {
@@ -96,12 +96,11 @@ const TeamRegistration = () => {
         const response = await axios.get(`/api/teams/${user.team_id}`);
         const team = response.data;
 
-        setTeamCode(team.team_code || "");
+        // teamCode được tự sinh từ backend - chỉ hiển thị, không edit
         setTeamName(team.name || "");
         setHomeStadium(team.home_stadium || "");
         setPlayers(
           (team.players || []).map((p) => ({
-            playerCode: p.player_code || "",
             name: p.name || "",
             dob: p.dob || "",
             type: p.type || "Trong nước",
@@ -214,7 +213,7 @@ const TeamRegistration = () => {
     }
     setPlayers([
       ...players,
-      { playerCode: "", name: "", dob: "", type: "Trong nước", notes: "" },
+      { name: "", dob: "", type: "Trong nước", notes: "" },
     ]);
   };
 
@@ -237,30 +236,16 @@ const TeamRegistration = () => {
     const newErrors = {};
     const warningMessages = [];
 
-    const normalizedCode = teamCode.trim().toUpperCase();
     const nameEmpty = !teamName.trim();
     const stadiumEmpty = !homeStadium.trim();
-    const codeEmpty = !normalizedCode;
 
-    if (codeEmpty || !TEAM_CODE_REGEX.test(normalizedCode)) {
-      newErrors.teamCode = true;
-      if (!codeEmpty && !TEAM_CODE_REGEX.test(normalizedCode)) {
-        warningMessages.push(
-          "Mã đội phải theo định dạng FCxxx (ví dụ: FC001)."
-        );
-      }
-    }
-
-    if (codeEmpty || nameEmpty || stadiumEmpty) {
-      if (codeEmpty) newErrors.teamCode = true;
+    if (nameEmpty || stadiumEmpty) {
       if (nameEmpty) newErrors.teamName = true;
       if (stadiumEmpty) newErrors.homeStadium = true;
       if (
-        !warningMessages.includes(
-          "Mã đội, tên đội và sân nhà không được để trống."
-        )
+        !warningMessages.includes("Tên đội và sân nhà không được để trống.")
       ) {
-        warningMessages.push("Mã đội, tên đội và sân nhà không được để trống.");
+        warningMessages.push("Tên đội và sân nhà không được để trống.");
       }
     }
 
@@ -268,24 +253,11 @@ const TeamRegistration = () => {
     const playerErrors = [];
     let hasAgeError = false;
     let hasDobError = false;
-    let hasPlayerCodeError = false;
-    const playerCodeSet = new Set();
-    let hasDuplicatePlayerCode = false;
 
     players.forEach((player, index) => {
       const playerError = {};
 
-      // Validate player code
-      const code = (player.playerCode || "").trim();
-      if (!code) {
-        playerError.playerCode = true;
-        hasPlayerCodeError = true;
-      } else if (playerCodeSet.has(code)) {
-        playerError.playerCode = true;
-        hasDuplicatePlayerCode = true;
-      } else {
-        playerCodeSet.add(code);
-      }
+      // playerCode được tự sinh từ backend - không cần validate
 
       if (!player.name.trim()) playerError.name = true;
       if (!player.dob) playerError.dob = true;
@@ -324,13 +296,7 @@ const TeamRegistration = () => {
       warningMessages.push("Tên cầu thủ không được để trống.");
     }
 
-    if (hasPlayerCodeError) {
-      warningMessages.push("Mã cầu thủ không được để trống.");
-    }
-
-    if (hasDuplicatePlayerCode) {
-      warningMessages.push("Mã cầu thủ bị trùng lặp.");
-    }
+    // playerCode được tự sinh từ backend - không cần validate
 
     if (playerErrors.length > 0) {
       newErrors.players = playerErrors;
@@ -375,35 +341,36 @@ const TeamRegistration = () => {
 
       if (isEditMode) {
         // Update existing team (PUT)
-        response = await axios.put(`/api/teams/${user.team_id}`, {
-          teamCode,
+        // teamCode được tự sinh từ backend - không gửi từ client
+        const putData = {
           teamName,
           homeStadium,
           players,
-        });
+        };
+        console.log("PUT payload:", putData);
+        response = await axios.put(`/api/teams/${user.team_id}`, putData);
         setToast({
           type: "success",
           message: response.data.message || "Cập nhật đội bóng thành công!",
         });
       } else {
         // Create new team (POST)
-        response = await axios.post("/api/teams", {
-          teamCode,
+        // teamCode được tự sinh từ backend - không gửi từ client
+        const postData = {
           teamName,
           homeStadium,
           players,
-        });
+        };
+        console.log("POST payload:", postData);
+        response = await axios.post("/api/teams", postData);
         setToast({
           type: "success",
           message: response.data.message || "Đăng ký đội bóng thành công!",
         });
         // Clear form only on successful new registration
-        setTeamCode("");
         setTeamName("");
         setHomeStadium("");
-        setPlayers([
-          { playerCode: "", name: "", dob: "", type: "Trong nước", notes: "" },
-        ]);
+        setPlayers([{ name: "", dob: "", type: "Trong nước", notes: "" }]);
         // Refresh user data to get team_id
         await fetchCurrentUser();
       }
@@ -446,23 +413,7 @@ const TeamRegistration = () => {
             )}
             <form onSubmit={handleSubmit} noValidate>
               <div className="row mb-3">
-                <div className="col-md-4">
-                  <label htmlFor="teamCode" className="form-label">
-                    Mã đội (unique)
-                  </label>
-                  <input
-                    type="text"
-                    id="teamCode"
-                    className={`form-control ${
-                      errors.teamCode ? "is-invalid" : ""
-                    }`}
-                    value={teamCode}
-                    onChange={(e) => setTeamCode(e.target.value.toUpperCase())}
-                    placeholder="Ví dụ: FC001"
-                    required
-                  />
-                </div>
-                <div className="col-md-4">
+                <div className="col-md-6">
                   <label htmlFor="teamName" className="form-label">
                     Tên đội
                   </label>
@@ -477,7 +428,7 @@ const TeamRegistration = () => {
                     required
                   />
                 </div>
-                <div className="col-md-4">
+                <div className="col-md-6">
                   <label htmlFor="homeStadium" className="form-label">
                     Sân nhà
                   </label>
@@ -500,12 +451,11 @@ const TeamRegistration = () => {
                 <table className="table player-table">
                   <thead>
                     <tr>
-                      <th style={{ width: "5%" }}>#</th>
-                      <th style={{ width: "10%" }}>Mã Cầu Thủ</th>
-                      <th style={{ width: "27%" }}>Cầu Thủ</th>
-                      <th style={{ width: "8%" }}>Ngày Sinh</th>
-                      <th style={{ width: "17%" }}>Loại Cầu Thủ</th>
-                      <th style={{ width: "23%" }}>Ghi Chú</th>
+                      <th style={{ width: "5%" }}>STT</th>
+                      <th style={{ width: "30%" }}>Cầu Thủ</th>
+                      <th style={{ width: "10%" }}>Ngày Sinh</th>
+                      <th style={{ width: "20%" }}>Loại Cầu Thủ</th>
+                      <th style={{ width: "28%" }}>Ghi Chú</th>
                       <th style={{ width: "5%" }}></th>
                     </tr>
                   </thead>
@@ -513,20 +463,6 @@ const TeamRegistration = () => {
                     {players.map((player, index) => (
                       <tr key={index}>
                         <td className="text-center">{index + 1}</td>
-                        <td>
-                          <input
-                            type="text"
-                            name="playerCode"
-                            className={`form-control ${
-                              errors.players?.[index]?.playerCode
-                                ? "is-invalid"
-                                : ""
-                            }`}
-                            value={player.playerCode}
-                            onChange={(e) => handlePlayerChange(index, e)}
-                            placeholder="VD: P001"
-                          />
-                        </td>
                         <td>
                           <input
                             type="text"
@@ -623,7 +559,6 @@ const TeamRegistration = () => {
                 <div className="alert alert-info">
                   <strong>Đội của bạn:</strong>
                   <p className="mb-0 mt-2">{teamName || "Chưa có tên"}</p>
-                  <small>Mã: {teamCode}</small>
                 </div>
               ) : (
                 <p>Bạn chưa có đội. Vui lòng đăng ký đội mới.</p>

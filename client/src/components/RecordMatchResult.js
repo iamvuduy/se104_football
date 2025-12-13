@@ -31,7 +31,7 @@ const EditMatchModal = ({ matchData, teams, settings, onSubmit, onCancel }) => {
   const handleAddGoal = () => {
     setGoals([
       ...goals,
-      { player: "", team: "", type: goalTypes[0], time: "", goalCode: "" },
+      { player: "", team: "", type: goalTypes[0], time: "" },
     ]);
   };
 
@@ -51,6 +51,27 @@ const EditMatchModal = ({ matchData, teams, settings, onSubmit, onCancel }) => {
       return;
     }
 
+    // Validate goals
+    for (let i = 0; i < goals.length; i++) {
+      const goal = goals[i];
+
+      if (!goal.team) {
+        setError(`Hãy chọn đội cho bàn thắng ${i + 1}`);
+        return;
+      }
+
+      if (!goal.player) {
+        setError(`Hãy nhập tên cầu thủ cho bàn thắng ${i + 1}`);
+        return;
+      }
+
+      if (!goal.time) {
+        setError(`Hãy nhập thời điểm ghi bàn cho bàn thắng ${i + 1}`);
+        return;
+      }
+    }
+
+    setError("");
     onSubmit({
       matchInfo: {
         ...matchData.matchInfo,
@@ -185,7 +206,6 @@ const EditMatchModal = ({ matchData, teams, settings, onSubmit, onCancel }) => {
               <thead>
                 <tr>
                   <th>STT</th>
-                  <th>Mã bàn thắng</th>
                   <th>Đội</th>
                   <th>Cầu thủ</th>
                   <th>Loại bàn thắng</th>
@@ -198,17 +218,6 @@ const EditMatchModal = ({ matchData, teams, settings, onSubmit, onCancel }) => {
                   <tr key={index}>
                     <td style={{ textAlign: "center", fontWeight: 600 }}>
                       {index + 1}
-                    </td>
-                    <td>
-                      <input
-                        type="text"
-                        placeholder="Mã..."
-                        value={goal.goalCode || ""}
-                        onChange={(e) =>
-                          handleGoalChange(index, "goalCode", e.target.value)
-                        }
-                        className="form-control"
-                      />
                     </td>
                     <td>
                       <select
@@ -438,23 +447,122 @@ const RecordMatchResult = () => {
     setToast("");
     setError("");
 
+    // Validate match info before normalizing
+    if (
+      !matchInfo.team1 ||
+      !matchInfo.team2 ||
+      !matchInfo.score ||
+      !matchInfo.date ||
+      !matchInfo.time
+    ) {
+      setModalMessage(
+        "Vui lòng điền đầy đủ thông tin trận đấu (Đội 1, Đội 2, Tỉ số, Ngày, Giờ)."
+      );
+      setModalType("error");
+      setShowModal(true);
+      return;
+    }
+
     // Normalize data
     const normalizedMatchInfo = {
       ...matchInfo,
-      team1: String(matchInfo.team1 || ""),
-      team2: String(matchInfo.team2 || ""),
+      team1: String(matchInfo.team1),
+      team2: String(matchInfo.team2),
     };
 
     const normalizedGoals = goals.map((goal) => ({
       ...goal,
       team: String(goal.team || ""),
       player: String(goal.player || ""),
-      time: goal.time,
+      time: goal.time !== "" ? Number(goal.time) : "",
     }));
+
+    // Validate goals
+    const team1Id = String(normalizedMatchInfo.team1);
+    const team2Id = String(normalizedMatchInfo.team2);
+    const team1Obj = teams.find((t) => String(t.id) === team1Id);
+    const team2Obj = teams.find((t) => String(t.id) === team2Id);
+
+    // Validate score vs goals count
+    const scoreParts = normalizedMatchInfo.score.split("-");
+    if (scoreParts.length === 2) {
+      const scoreTeam1 = parseInt(scoreParts[0].trim(), 10);
+      const scoreTeam2 = parseInt(scoreParts[1].trim(), 10);
+
+      if (!isNaN(scoreTeam1) && !isNaN(scoreTeam2)) {
+        const goalsTeam1 = normalizedGoals.filter(
+          (g) => String(g.team) === team1Id
+        ).length;
+        const goalsTeam2 = normalizedGoals.filter(
+          (g) => String(g.team) === team2Id
+        ).length;
+
+        if (goalsTeam1 !== scoreTeam1 || goalsTeam2 !== scoreTeam2) {
+          setToast(
+            `Không thể ghi nhận kết quả: Số bàn thắng không khớp với tỷ số (Đội 1: ${goalsTeam1}/${scoreTeam1}, Đội 2: ${goalsTeam2}/${scoreTeam2}).`
+          );
+          return;
+        }
+      }
+    }
+
+    for (let i = 0; i < normalizedGoals.length; i++) {
+      const goal = normalizedGoals[i];
+
+      // Check if goal has required fields
+      if (!goal.team) {
+        setModalMessage("Hãy chọn đội cho tất cả bàn thắng.");
+        setModalType("error");
+        setShowModal(true);
+        return;
+      }
+
+      if (!goal.player) {
+        setModalMessage(`Hãy nhập tên cầu thủ cho bàn thắng ${i + 1}.`);
+        setModalType("error");
+        setShowModal(true);
+        return;
+      }
+
+      if (!goal.time) {
+        setModalMessage(`Hãy nhập thời điểm ghi bàn cho bàn thắng ${i + 1}.`);
+        setModalType("error");
+        setShowModal(true);
+        return;
+      }
+
+      // Validate that the player belongs to the scoring team
+      const scoringTeamId = String(goal.team);
+      const scoringTeam = scoringTeamId === team1Id ? team1Obj : team2Obj;
+
+      if (!scoringTeam) {
+        setModalMessage(`Đội ghi bàn ${i + 1} không hợp lệ.`);
+        setModalType("error");
+        setShowModal(true);
+        return;
+      }
+
+      // Note: We're not strictly validating player existence since player names can be typed in
+      // But we can validate that the player is being assigned to the correct team
+      // If you want stricter validation with a player database, implement that here
+    }
 
     try {
       const url = matchId ? `/api/results/${matchId}` : "/api/results";
       const method = matchId ? "PUT" : "POST";
+
+      const payload = {
+        matchInfo: normalizedMatchInfo,
+        goals: normalizedGoals,
+      };
+
+      console.log("Submitting match result:", {
+        url,
+        method,
+        payload,
+        matchInfoKeys: Object.keys(normalizedMatchInfo),
+        goalsCount: normalizedGoals.length,
+      });
 
       const response = await fetch(url, {
         method: method,
@@ -462,13 +570,12 @@ const RecordMatchResult = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          matchInfo: normalizedMatchInfo,
-          goals: normalizedGoals,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
+
+      console.log("Response:", { status: response.status, data });
 
       if (response.ok) {
         setModalMessage(
@@ -545,8 +652,8 @@ const RecordMatchResult = () => {
           player: String(g.player_id),
           team: String(g.team_id),
           type: g.goal_type,
-          time: g.goal_time,
-          goalCode: g.goal_code,
+          time: String(g.goal_time || ""),
+          // goalCode được tự sinh từ backend - không cần gửi
         })),
       };
 
@@ -622,7 +729,16 @@ const RecordMatchResult = () => {
         </div>
       )}
       {toast && (
-        <div className="admin-toast" onClick={() => setToast("")}>
+        <div
+          className="admin-toast"
+          onClick={() => setToast("")}
+          style={{
+            backgroundColor:
+              toast.startsWith("Không thể") || toast.startsWith("Lỗi")
+                ? "#ef4444"
+                : "#10b981",
+          }}
+        >
           {toast}
         </div>
       )}

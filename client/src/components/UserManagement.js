@@ -487,7 +487,7 @@ const UserManagement = () => {
             >
               <button
                 type="button"
-                className="admin-btn is-primary"
+                className="admin-btn is-warning"
                 onClick={() => setShowRoleModal(true)}
                 title="Tạo vai trò mới"
               >
@@ -614,9 +614,10 @@ const UserManagement = () => {
                   filteredAndPaginatedUsers.paginatedList.map(
                     (account, index) => {
                       const normalizedRole = resolveRole(account.role);
-                      const isLocked = account.username === "admin";
                       const isSystemAdmin =
                         normalizedRole === ROLES.SYSTEM_ADMIN;
+                      const isLocked =
+                        account.username === "admin" || isSystemAdmin;
                       const roleLabel =
                         ROLE_LABELS[normalizedRole] || normalizedRole;
                       const rowNumber = (currentPage - 1) * 10 + index + 1;
@@ -947,7 +948,7 @@ const UserManagement = () => {
                       letterSpacing: "0.5px",
                     }}
                   >
-                    📝 Tên vai trò
+                    Tên vai trò
                   </label>
                   <input
                     type="text"
@@ -1149,7 +1150,7 @@ const UserManagement = () => {
                       letterSpacing: "0.5px",
                     }}
                   >
-                    📝 Tên đăng nhập
+                    Tên đăng nhập
                   </label>
                   <input
                     type="text"
@@ -1182,7 +1183,7 @@ const UserManagement = () => {
                       letterSpacing: "0.5px",
                     }}
                   >
-                    👤 Họ và tên
+                    Họ và tên
                   </label>
                   <input
                     type="text"
@@ -1228,7 +1229,7 @@ const UserManagement = () => {
                       letterSpacing: "0.5px",
                     }}
                   >
-                    📧 Email
+                    Email
                   </label>
                   <input
                     type="email"
@@ -1279,7 +1280,7 @@ const UserManagement = () => {
                         letterSpacing: "0.5px",
                       }}
                     >
-                      📅 Ngày sinh
+                      Ngày sinh
                     </label>
                     <input
                       type="date"
@@ -1322,7 +1323,7 @@ const UserManagement = () => {
                         letterSpacing: "0.5px",
                       }}
                     >
-                      🎭 Vai trò
+                      Vai trò
                     </label>
                     <select
                       value={editingUser.position || ""}
@@ -1385,7 +1386,7 @@ const UserManagement = () => {
                       letterSpacing: "0.5px",
                     }}
                   >
-                    🔐 Đổi mật khẩu
+                    Đổi mật khẩu
                   </label>
                   <input
                     type="password"

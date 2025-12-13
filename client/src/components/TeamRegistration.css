@@ -78,6 +78,21 @@
   box-shadow: 0 0 0 4px rgba(231, 76, 60, 0.1);
 }
 
+/* Readonly field style for locked IDs */
+.form-control.readonly-field,
+.form-control[readonly] {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+  color: #6c757d;
+  border-color: #ced4da;
+}
+
+.form-control.readonly-field:focus,
+.form-control[readonly]:focus {
+  border-color: #ced4da;
+  box-shadow: none;
+}
+
 /* Player Table */
 .table-responsive {
   margin: 1.5rem 0;

@@ -12,6 +12,7 @@ import {
   FaExclamationCircle,
   FaPlus,
   FaTimes,
+  FaEye,
 } from "react-icons/fa";
 import MatchForm from "./MatchForm";
 
@@ -30,12 +31,18 @@ const MatchResults = () => {
   const [toast, setToast] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedRound, setSelectedRound] = useState("");
-  const itemsPerPage = 10;
+  const [selectedTeam, setSelectedTeam] = useState("");
+  const itemsPerPage = 5;
 
   // Modal state
   const [showEditModal, setShowEditModal] = useState(false);
   const [editData, setEditData] = useState(null);
   const [editingMatchId, setEditingMatchId] = useState(null);
+
+  // View modal state
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewingMatchData, setViewingMatchData] = useState(null);
+  const [viewingMatchGoals, setViewingMatchGoals] = useState([]);
 
   // Auto-hide toast after 3 seconds
   useEffect(() => {
@@ -127,7 +134,7 @@ const MatchResults = () => {
           team: String(g.team_id),
           type: g.goal_type,
           time: g.goal_time,
-          goalCode: g.goal_code,
+          // goalCode được tự sinh từ backend - không cần gửi
         })),
       };
 
@@ -196,6 +203,34 @@ const MatchResults = () => {
     setEditData(null);
   };
 
+  const handleView = async (matchId) => {
+    try {
+      const match = results.find((m) => m.id === matchId);
+      if (!match) return;
+
+      const goalsResponse = await axios.get(
+        `/api/results/${matchId}/goals`,
+        axiosConfig
+      );
+
+      setViewingMatchData(match);
+      setViewingMatchGoals(goalsResponse.data?.data || []);
+      setShowViewModal(true);
+    } catch (err) {
+      console.error("Error fetching match details:", err);
+      setToast({
+        message: "Không thể tải thông tin trận đấu.",
+        type: "error",
+      });
+    }
+  };
+
+  const handleCloseViewModal = () => {
+    setShowViewModal(false);
+    setViewingMatchData(null);
+    setViewingMatchGoals([]);
+  };
+
   const handleDelete = async (matchId) => {
     if (
       !window.confirm(
@@ -248,14 +283,27 @@ const MatchResults = () => {
 
   // Filter results by selected round
   const filteredResults = useMemo(() => {
-    if (!selectedRound) return results;
+    let filtered = results;
 
-    const targetRound = parseInt(selectedRound);
-    return results.filter((match) => {
-      const matchRound = getMatchRound(match);
-      return matchRound === targetRound;
-    });
-  }, [results, selectedRound, schedules]);
+    if (selectedRound) {
+      const targetRound = parseInt(selectedRound);
+      filtered = filtered.filter((match) => {
+        const matchRound = getMatchRound(match);
+        return matchRound === targetRound;
+      });
+    }
+
+    if (selectedTeam) {
+      const targetTeamId = parseInt(selectedTeam);
+      filtered = filtered.filter((match) => {
+        return (
+          match.team1_id === targetTeamId || match.team2_id === targetTeamId
+        );
+      });
+    }
+
+    return filtered;
+  }, [results, selectedRound, selectedTeam, schedules]);
 
   // Pagination
   const totalPages = Math.ceil(filteredResults.length / itemsPerPage);
@@ -294,11 +342,6 @@ const MatchResults = () => {
           <h2>Kết quả trận đấu</h2>
           <p>Danh sách tất cả các trận đấu đã được ghi nhận kết quả</p>
         </div>
-        {canEditResults && (
-          <button className="btn btn-primary" onClick={handleCreateNew}>
-            <FaPlus /> Ghi nhận kết quả mới
-          </button>
-        )}
       </div>
 
       {error && (
@@ -341,6 +384,27 @@ const MatchResults = () => {
               ))}
             </select>
           </div>
+          <div className="filter-group">
+            <label htmlFor="team-filter" className="filter-label">
+              Lọc theo đội
+            </label>
+            <select
+              id="team-filter"
+              value={selectedTeam}
+              onChange={(e) => {
+                setSelectedTeam(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="filter-select"
+            >
+              <option value="">Tất cả các đội</option>
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="filter-stats">
             <span className="stats-badge">
               {filteredResults.length} kết quả
@@ -370,8 +434,12 @@ const MatchResults = () => {
                 <tr>
                   <td colSpan={9} className="empty-state">
                     <p>
-                      {selectedRound
+                      {selectedRound && selectedTeam
+                        ? `Chưa có trận nào thuộc vòng ${selectedRound} của đội được chọn được ghi kết quả.`
+                        : selectedRound
                         ? `Chưa có trận nào thuộc vòng ${selectedRound} được ghi kết quả.`
+                        : selectedTeam
+                        ? "Chưa có trận đấu nào của đội này được ghi kết quả."
                         : "Chưa có kết quả trận đấu nào được ghi nhận."}
                     </p>
                   </td>
@@ -415,11 +483,19 @@ const MatchResults = () => {
                           justifyContent: "center",
                         }}
                       >
+                        <button
+                          type="button"
+                          className="btn btn-info btn-sm"
+                          onClick={() => handleView(result.id)}
+                          title="Xem chi tiết tratan đấu"
+                        >
+                          <FaEye />
+                        </button>
                         {canEditResults && (
                           <>
                             <button
                               type="button"
-                              className="btn btn-secondary btn-sm"
+                              className="btn btn-warning btn-sm"
                               onClick={() => handleEdit(result.id)}
                             >
                               <FaEdit />
@@ -506,6 +582,143 @@ const MatchResults = () => {
                 isEditing={true}
                 token={token}
               />
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* View Modal */}
+      {showViewModal &&
+        viewingMatchData &&
+        createPortal(
+          <div className="modal-overlay">
+            <div className="modal-content-wrapper match-view-modal-wide">
+              <div className="modal-header match-view-header">
+                <h2>Chi tiết trận đấu</h2>
+                <button
+                  className="close-modal-btn"
+                  onClick={handleCloseViewModal}
+                >
+                  <FaTimes />
+                </button>
+              </div>
+              <div className="modal-body match-view-body">
+                {/* Match Info Block - Stacked Layout */}
+                <div className="match-info-block">
+                  {/* Row 1: Match Code */}
+                  <div className="match-code-row">
+                    <span className="match-code-label">Mã trận</span>
+                    <span className="match-code-value">
+                      {viewingMatchData.match_code || "—"}
+                    </span>
+                  </div>
+
+                  {/* Row 2: Teams and Score */}
+                  <div className="match-teams-row">
+                    <div className="team-box team1-box">
+                      <span className="team-name-display">
+                        {viewingMatchData.team1_name}
+                      </span>
+                    </div>
+                    <div className="score-box">
+                      <span className="score-display">
+                        {viewingMatchData.score || "0-0"}
+                      </span>
+                    </div>
+                    <div className="team-box team2-box">
+                      <span className="team-name-display">
+                        {viewingMatchData.team2_name}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Row 3: Date, Time, Stadium */}
+                  <div className="match-details-row">
+                    <div className="detail-item">
+                      <span className="detail-text">
+                        {new Date(
+                          viewingMatchData.match_date
+                        ).toLocaleDateString("vi-VN")}
+                      </span>
+                    </div>
+                    <div className="detail-separator">•</div>
+                    <div className="detail-item">
+                      <span className="detail-text">
+                        {viewingMatchData.match_time || "—"}
+                      </span>
+                    </div>
+                    <div className="detail-separator">•</div>
+                    <div className="detail-item">
+                      <span className="detail-text">
+                        {viewingMatchData.stadium || "—"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Goals Section */}
+                <div className="match-view-goals-section">
+                  <h3 className="goals-section-title">Danh sách ghi bàn</h3>
+
+                  {viewingMatchGoals.length > 0 ? (
+                    <div className="goals-table-wrapper">
+                      <div className="goals-table-header">
+                        <div className="goals-col goals-col-stt">STT</div>
+                        <div className="goals-col goals-col-player">
+                          Cầu thủ
+                        </div>
+                        <div className="goals-col goals-col-team">Đội</div>
+                        <div className="goals-col goals-col-type">
+                          Loại bàn thắng
+                        </div>
+                        <div className="goals-col goals-col-time">
+                          Thời điểm
+                        </div>
+                      </div>
+                      {viewingMatchGoals.map((goal, index) => {
+                        const isTeam1Goal =
+                          goal.team_id === viewingMatchData.team1_id;
+                        return (
+                          <div
+                            key={index}
+                            className={`goals-table-row ${
+                              isTeam1Goal ? "team1-goal" : "team2-goal"
+                            }`}
+                          >
+                            <div className="goals-col goals-col-stt">
+                              {index + 1}
+                            </div>
+                            <div className="goals-col goals-col-player">
+                              {goal.player_name || "—"}
+                            </div>
+                            <div className="goals-col goals-col-team">
+                              {isTeam1Goal
+                                ? viewingMatchData.team1_name
+                                : viewingMatchData.team2_name}
+                            </div>
+                            <div className="goals-col goals-col-type">
+                              <span className="type-badge">
+                                {goal.goal_type === "own"
+                                  ? "Phản lưới"
+                                  : goal.goal_type === "penalty"
+                                  ? "11m"
+                                  : "Bình thường"}
+                              </span>
+                            </div>
+                            <div className="goals-col goals-col-time">
+                              {goal.goal_time || "—"}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="no-goals-message">
+                      <p>Chưa có bàn thắng nào</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>,
           document.body

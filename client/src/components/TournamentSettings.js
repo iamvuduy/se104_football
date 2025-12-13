@@ -31,60 +31,63 @@ const TournamentSettings = () => {
   }, [token]);
 
   // Define all settings with metadata - grouped for better organization
-  const settingsConfig = useMemo(() => [
-    {
-      key: "player_age_range",
-      label: "Độ tuổi cầu thủ",
-      type: "range",
-      fields: ["player_min_age", "player_max_age"],
-      note: "Độ tuổi hợp lệ để đăng ký thi đấu",
-      category: "Quy định cầu thủ"
-    },
-    {
-      key: "team_size",
-      label: "Số lượng cầu thủ trong đội",
-      type: "range",
-      fields: ["team_min_players", "team_max_players"],
-      note: "Số cầu thủ tối thiểu và tối đa",
-      category: "Quy định đội bóng"
-    },
-    {
-      key: "foreign_player_limit",
-      label: "Giới hạn cầu thủ nước ngoài",
-      type: "number",
-      note: "Số lượng cầu thủ nước ngoài tối đa",
-      category: "Quy định đội bóng"
-    },
-    {
-      key: "goal_time_limit",
-      label: "Thời điểm ghi bàn tối đa",
-      type: "number",
-      note: "Phút thi đấu tối đa (ví dụ: 90')",
-      category: "Quy định bàn thắng"
-    },
-    {
-      key: "goal_types",
-      label: "Loại bàn thắng",
-      type: "goal_types",
-      note: "Danh sách các loại bàn thắng được phép",
-      category: "Quy định bàn thắng"
-    },
-    {
-      key: "points_system",
-      label: "Hệ thống điểm số",
-      type: "points",
-      fields: ["points_win", "points_draw", "points_loss"],
-      note: "Điểm khi Thắng / Hòa / Thua",
-      category: "Quy định điểm số"
-    },
-    {
-      key: "ranking_priority",
-      label: "Tiêu chí xếp hạng",
-      type: "ranking",
-      note: "Thứ tự ưu tiên khi xếp hạng",
-      category: "Quy định xếp hạng"
-    },
-  ], []);
+  const settingsConfig = useMemo(
+    () => [
+      {
+        key: "player_age_range",
+        label: "Độ tuổi cầu thủ",
+        type: "range",
+        fields: ["player_min_age", "player_max_age"],
+        note: "Độ tuổi hợp lệ để đăng ký thi đấu",
+        category: "Quy định cầu thủ",
+      },
+      {
+        key: "team_size",
+        label: "Số lượng cầu thủ trong đội",
+        type: "range",
+        fields: ["team_min_players", "team_max_players"],
+        note: "Số cầu thủ tối thiểu và tối đa",
+        category: "Quy định đội bóng",
+      },
+      {
+        key: "foreign_player_limit",
+        label: "Giới hạn cầu thủ nước ngoài",
+        type: "number",
+        note: "Số lượng cầu thủ nước ngoài tối đa",
+        category: "Quy định đội bóng",
+      },
+      {
+        key: "goal_time_limit",
+        label: "Thời điểm ghi bàn tối đa",
+        type: "number",
+        note: "Phút thi đấu tối đa (ví dụ: 90')",
+        category: "Quy định bàn thắng",
+      },
+      {
+        key: "goal_types",
+        label: "Loại bàn thắng",
+        type: "goal_types",
+        note: "Danh sách các loại bàn thắng được phép",
+        category: "Quy định bàn thắng",
+      },
+      {
+        key: "points_system",
+        label: "Hệ thống điểm số",
+        type: "points",
+        fields: ["points_win", "points_draw", "points_loss"],
+        note: "Điểm khi Thắng / Hòa / Thua",
+        category: "Quy định điểm số",
+      },
+      {
+        key: "ranking_priority",
+        label: "Tiêu chí xếp hạng",
+        type: "ranking",
+        note: "Thứ tự ưu tiên khi xếp hạng",
+        category: "Quy định xếp hạng",
+      },
+    ],
+    []
+  );
 
   useEffect(() => {
     if (!token || !canManageSettings) {
@@ -117,7 +120,7 @@ const TournamentSettings = () => {
   const handleEdit = (config) => {
     if (config.type === "range" || config.type === "points") {
       // For grouped settings, pass all field values
-      const values = config.fields.map(field => settings[field]);
+      const values = config.fields.map((field) => settings[field]);
       setEditModal({
         key: config.key,
         label: config.label,
@@ -163,19 +166,22 @@ const TournamentSettings = () => {
       } else if (editModal.type === "goal_types") {
         // Clean and validate goal types
         const cleanedTypes = editModal.value
-          .map(type => String(type).trim())
-          .filter(type => type.length > 0);
-        
+          .map((type) => String(type).trim())
+          .filter((type) => type.length > 0);
+
         if (cleanedTypes.length === 0) {
           setError("Phải có ít nhất một loại bàn thắng");
           setSaving(false);
           return;
         }
-        
+
         updatedSettings[editModal.key] = cleanedTypes;
       } else {
         // Update single field
-        updatedSettings[editModal.key] = editModal.type === "number" ? Number(editModal.value) : editModal.value;
+        updatedSettings[editModal.key] =
+          editModal.type === "number"
+            ? Number(editModal.value)
+            : editModal.value;
       }
 
       const response = await fetch("/api/settings", {
@@ -228,17 +234,17 @@ const TournamentSettings = () => {
 
   const formatValue = (config) => {
     if (config.type === "range") {
-      const [min, max] = config.fields.map(field => settings[field]);
+      const [min, max] = config.fields.map((field) => settings[field]);
       return `${min} - ${max}`;
     }
     if (config.type === "points") {
-      const [win, draw, loss] = config.fields.map(field => settings[field]);
+      const [win, draw, loss] = config.fields.map((field) => settings[field]);
       return `${win} / ${draw} / ${loss}`;
     }
     if (config.type === "ranking") {
       const value = settings[config.key];
       if (Array.isArray(value)) {
-        return value.map(k => RANKING_LABELS[k] || k).join(" > ");
+        return value.map((k) => RANKING_LABELS[k] || k).join(" > ");
       }
     }
     if (config.type === "goal_types") {
@@ -261,22 +267,28 @@ const TournamentSettings = () => {
   const moveItem = (index, direction) => {
     if (!editModal || !Array.isArray(editModal.value)) return;
     const newList = [...editModal.value];
-    
+
     // Prevent moving the first item (points) or swapping with it
     if (index === 0) return; // Cannot move the first item
     if (direction === "up" && index === 1) return; // Cannot swap with the first item
 
     if (direction === "up" && index > 0) {
-      [newList[index], newList[index - 1]] = [newList[index - 1], newList[index]];
+      [newList[index], newList[index - 1]] = [
+        newList[index - 1],
+        newList[index],
+      ];
     } else if (direction === "down" && index < newList.length - 1) {
-      [newList[index], newList[index + 1]] = [newList[index + 1], newList[index]];
+      [newList[index], newList[index + 1]] = [
+        newList[index + 1],
+        newList[index],
+      ];
     }
     setEditModal({ ...editModal, value: newList });
   };
 
   const toggleRankingItem = (key) => {
     if (!editModal || !Array.isArray(editModal.value)) return;
-    
+
     // Prevent removing points
     if (key === "points") return;
 
@@ -284,7 +296,10 @@ const TournamentSettings = () => {
     if (currentList.includes(key)) {
       // Remove (but prevent removing the last one)
       if (currentList.length > 1) {
-        setEditModal({ ...editModal, value: currentList.filter(k => k !== key) });
+        setEditModal({
+          ...editModal,
+          value: currentList.filter((k) => k !== key),
+        });
       }
     } else {
       // Add to end
@@ -342,13 +357,27 @@ const TournamentSettings = () => {
         </div>
 
         {error && (
-          <div style={{ padding: "1rem", background: "#fee2e2", color: "#b91c1c", margin: "1rem" }}>
+          <div
+            style={{
+              padding: "1rem",
+              background: "#fee2e2",
+              color: "#b91c1c",
+              margin: "1rem",
+            }}
+          >
             {error}
           </div>
         )}
 
         {toast && (
-          <div style={{ padding: "1rem", background: "#d1fae5", color: "#065f46", margin: "1rem" }}>
+          <div
+            style={{
+              padding: "1rem",
+              background: "#d1fae5",
+              color: "#065f46",
+              margin: "1rem",
+            }}
+          >
             {toast}
           </div>
         )}
@@ -357,7 +386,7 @@ const TournamentSettings = () => {
           <table className="settings-table">
             <thead>
               <tr>
-                <th>No</th>
+                <th>STT</th>
                 <th>Tên quy định</th>
                 <th>Thao tác</th>
                 <th>Giá trị</th>
@@ -401,7 +430,10 @@ const TournamentSettings = () => {
 
       {/* Edit Modal */}
       {editModal && (
-        <div className="modal-overlay" onClick={() => !saving && setEditModal(null)}>
+        <div
+          className="modal-overlay"
+          onClick={() => !saving && setEditModal(null)}
+        >
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Sửa quy định</h3>
@@ -452,7 +484,11 @@ const TournamentSettings = () => {
                       onChange={(e) =>
                         setEditModal({
                           ...editModal,
-                          values: [e.target.value, editModal.values[1], editModal.values[2]],
+                          values: [
+                            e.target.value,
+                            editModal.values[1],
+                            editModal.values[2],
+                          ],
                         })
                       }
                       min={0}
@@ -467,7 +503,11 @@ const TournamentSettings = () => {
                       onChange={(e) =>
                         setEditModal({
                           ...editModal,
-                          values: [editModal.values[0], e.target.value, editModal.values[2]],
+                          values: [
+                            editModal.values[0],
+                            e.target.value,
+                            editModal.values[2],
+                          ],
                         })
                       }
                       min={0}
@@ -482,7 +522,11 @@ const TournamentSettings = () => {
                       onChange={(e) =>
                         setEditModal({
                           ...editModal,
-                          values: [editModal.values[0], editModal.values[1], e.target.value],
+                          values: [
+                            editModal.values[0],
+                            editModal.values[1],
+                            e.target.value,
+                          ],
                         })
                       }
                       min={0}
@@ -493,31 +537,51 @@ const TournamentSettings = () => {
               ) : editModal.type === "ranking" ? (
                 <div className="ranking-editor">
                   <div className="ranking-list">
-                    <label className="modal-label">Thứ tự ưu tiên (kéo thả hoặc dùng nút)</label>
+                    <label className="modal-label">
+                      Thứ tự ưu tiên (kéo thả hoặc dùng nút)
+                    </label>
                     {editModal.value.map((key, index) => (
                       <div key={key} className="ranking-item">
                         <span>
                           {index + 1}. {RANKING_LABELS[key] || key}
-                          {key === "points" && <span style={{ marginLeft: "8px", fontSize: "0.8em", color: "#666", fontStyle: "italic" }}>(Cố định)</span>}
+                          {key === "points" && (
+                            <span
+                              style={{
+                                marginLeft: "8px",
+                                fontSize: "0.8em",
+                                color: "#666",
+                                fontStyle: "italic",
+                              }}
+                            >
+                              (Cố định)
+                            </span>
+                          )}
                         </span>
                         <div className="ranking-actions">
-                          <button 
+                          <button
                             type="button"
                             className="btn-rank-action"
                             disabled={index === 0 || index === 1}
                             onClick={() => moveItem(index, "up")}
                             title="Lên trên"
-                            style={{ visibility: index === 0 ? 'hidden' : 'visible' }}
+                            style={{
+                              visibility: index === 0 ? "hidden" : "visible",
+                            }}
                           >
                             ↑
                           </button>
-                          <button 
+                          <button
                             type="button"
                             className="btn-rank-action"
-                            disabled={index === editModal.value.length - 1 || index === 0}
+                            disabled={
+                              index === editModal.value.length - 1 ||
+                              index === 0
+                            }
                             onClick={() => moveItem(index, "down")}
                             title="Xuống dưới"
-                            style={{ visibility: index === 0 ? 'hidden' : 'visible' }}
+                            style={{
+                              visibility: index === 0 ? "hidden" : "visible",
+                            }}
                           >
                             ↓
                           </button>
@@ -527,7 +591,10 @@ const TournamentSettings = () => {
                             onClick={() => toggleRankingItem(key)}
                             title="Bỏ tiêu chí này"
                             disabled={key === "points"}
-                            style={{ visibility: key === "points" ? 'hidden' : 'visible' }}
+                            style={{
+                              visibility:
+                                key === "points" ? "hidden" : "visible",
+                            }}
                           >
                             ✕
                           </button>
@@ -535,13 +602,13 @@ const TournamentSettings = () => {
                       </div>
                     ))}
                   </div>
-                  
+
                   <div className="ranking-available">
                     <label className="modal-label">Tiêu chí khác:</label>
                     <div className="ranking-available-list">
                       {Object.keys(RANKING_LABELS)
-                        .filter(key => !editModal.value.includes(key))
-                        .map(key => (
+                        .filter((key) => !editModal.value.includes(key))
+                        .map((key) => (
                           <button
                             key={key}
                             type="button"
@@ -557,7 +624,9 @@ const TournamentSettings = () => {
                 </div>
               ) : editModal.type === "goal_types" ? (
                 <div className="goal-types-editor">
-                  <label className="modal-label">Danh sách loại bàn thắng:</label>
+                  <label className="modal-label">
+                    Danh sách loại bàn thắng:
+                  </label>
                   {editModal.value.map((type, index) => (
                     <div key={index} className="goal-type-item">
                       <input
@@ -578,7 +647,9 @@ const TournamentSettings = () => {
                           if (editModal.value.length > 1) {
                             setEditModal({
                               ...editModal,
-                              value: editModal.value.filter((_, i) => i !== index)
+                              value: editModal.value.filter(
+                                (_, i) => i !== index
+                              ),
                             });
                           }
                         }}
@@ -595,7 +666,7 @@ const TournamentSettings = () => {
                     onClick={() => {
                       setEditModal({
                         ...editModal,
-                        value: [...editModal.value, ""]
+                        value: [...editModal.value, ""],
                       });
                     }}
                   >

@@ -199,11 +199,19 @@ const TopScorerLeaderboard = () => {
       if (!response.ok) {
         const data = await response.json();
         setReportMessage(data.error || "Lỗi khi công khai báo cáo");
+        setToast({
+          message: data.error || "Lỗi khi công khai báo cáo",
+          type: "error",
+        });
         return;
       }
 
       const data = await response.json();
-      setReportMessage(data.message);
+      setReportMessage("");
+      setToast({
+        message: "Báo cáo đã được công khai thành công!",
+        type: "success",
+      });
 
       // Wait a moment then check report status and reload
       setTimeout(() => {
@@ -212,6 +220,10 @@ const TopScorerLeaderboard = () => {
       }, 300);
     } catch (error) {
       setReportMessage("Lỗi khi công khai báo cáo: " + error.message);
+      setToast({
+        message: "Lỗi khi công khai báo cáo: " + error.message,
+        type: "error",
+      });
     }
   };
 
@@ -231,12 +243,26 @@ const TopScorerLeaderboard = () => {
 
       if (!response.ok) {
         setReportMessage(data.error || "Lỗi khi ẩn báo cáo");
+        setToast({
+          message: data.error || "Lỗi khi ẩn báo cáo",
+          type: "error",
+        });
       } else {
-        setReportMessage(data.message);
+        setReportMessage(
+          "✓ Báo cáo đã được ẩn khỏi người dùng khác. Bạn có thể chỉnh sửa và công khai lại sau."
+        );
+        setToast({
+          message: "Báo cáo đã được ẩn thành công!",
+          type: "success",
+        });
         await checkReportStatus();
       }
     } catch (error) {
       setReportMessage("Lỗi khi ẩn báo cáo: " + error.message);
+      setToast({
+        message: "Lỗi khi ẩn báo cáo: " + error.message,
+        type: "error",
+      });
     }
   };
 
@@ -401,20 +427,28 @@ const TopScorerLeaderboard = () => {
 
                   {reportStatus && (
                     <>
-                      {!reportStatus.is_published && (
+                      {reportStatus.is_published === 0 && (
                         <button
                           onClick={handlePublishReport}
-                          className="ts-export-btn success"
+                          className="ts-export-btn primary"
+                          title="Chia sẻ báo cáo cho người dùng khác (sau khi chia sẻ, người dùng khác có thể xem bảng xếp hạng này)"
                         >
-                          Đưa Báo Cáo
+                          Chia Sẻ Báo Cáo
+                        </button>
+                      )}
+                      {reportStatus.is_published === 1 && (
+                        <button
+                          onClick={handleUnpublishReport}
+                          className="ts-export-btn danger"
+                          title="Ẩn báo cáo khỏi người dùng khác để chỉnh sửa (sau khi ẩn, người dùng khác sẽ không thể xem bảng xếp hạng này)"
+                        >
+                          Ẩn Báo Cáo
                         </button>
                       )}
                     </>
                   )}
                 </>
               )}
-
-              {isReportPublished && isOrgnanizer && <></>}
             </div>
           </header>
 

@@ -143,11 +143,6 @@ const TeamList = () => {
           >
             {loading ? "Đang tải..." : "Tải lại"}
           </button>
-          {canManageTeams && (
-            <Link to="/register-team" className="team-action success">
-              Thêm đội mới
-            </Link>
-          )}
         </div>
       </header>
 

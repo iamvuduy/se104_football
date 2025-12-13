@@ -2,6 +2,10 @@ const express = require("express");
 const db = require("../database");
 const { loadSettings } = require("../services/settingsService");
 const teamOwnerMiddleware = require("../middleware/teamOwner");
+const {
+  generateTeamCode,
+  generatePlayerCode,
+} = require("../services/idGeneratorService");
 
 const router = express.Router();
 
@@ -149,48 +153,22 @@ const validatePlayersWithSettings = (players, settings) => {
     return `Số cầu thủ nước ngoài không được vượt quá ${foreignLimit}.`;
   }
 
-  // Validate player codes
-  const playerCodes = new Set();
-  for (let i = 0; i < players.length; i++) {
-    const code = players[i].playerCode;
-    if (!code) {
-      return `Cầu thủ thứ ${i + 1} thiếu mã cầu thủ.`;
-    }
-    if (playerCodes.has(code)) {
-      return `Mã cầu thủ '${code}' bị trùng lặp trong danh sách đăng ký.`;
-    }
-    playerCodes.add(code);
-  }
-
   return null;
 };
 
 router.post("/", async (req, res) => {
-  const { teamCode, teamName, homeStadium, players } = req.body;
+  const { teamName, homeStadium, players } = req.body;
   console.log(
     "DEBUG: POST /api/teams payload:",
     JSON.stringify(req.body, null, 2)
   );
 
-  if (!teamCode || teamName === undefined || homeStadium === undefined) {
+  if (teamName === undefined || homeStadium === undefined) {
     return res.status(400).json({ error: "Invalid data provided." });
   }
 
   if (!Array.isArray(players) || players.length === 0) {
     return res.status(400).json({ error: "Danh sách cầu thủ không hợp lệ." });
-  }
-
-  const normalizedCode = String(teamCode || "")
-    .trim()
-    .toUpperCase();
-  if (!normalizedCode) {
-    return res.status(400).json({ error: "Mã đội không được để trống." });
-  }
-
-  if (!TEAM_CODE_REGEX.test(normalizedCode)) {
-    return res.status(400).json({
-      error: "Mã đội phải theo định dạng FCxxx (ví dụ: FC001).",
-    });
   }
 
   const cleanedName = String(teamName || "").trim();
@@ -214,61 +192,69 @@ router.post("/", async (req, res) => {
     return res.status(400).json({ error: validationError });
   }
 
+  // Auto-generate Team Code
+  let autoTeamCode;
+  try {
+    autoTeamCode = await generateTeamCode();
+    console.log("DEBUG: Generated team code:", autoTeamCode);
+  } catch (err) {
+    console.error("Error generating team code:", err.message);
+    return res.status(500).json({ error: "Không thể tạo mã đội." });
+  }
+
   const insertTeamSql = `INSERT INTO teams (team_code, name, home_stadium) VALUES (?, ?, ?)`;
+  console.log(
+    "DEBUG: Attempting to insert team with code:",
+    autoTeamCode,
+    "name:",
+    cleanedName
+  );
 
   db.run(
     insertTeamSql,
-    [normalizedCode, cleanedName, cleanedStadium],
+    [autoTeamCode, cleanedName, cleanedStadium],
     function (err) {
       if (err) {
-        console.error("Error inserting team:", err.message);
+        console.error("Error inserting team - Full error:", err);
+        console.error("Error code:", err.code);
+        console.error("Error message:", err.message);
         return res.status(500).json({
-          error: "Could not save team. Mã đội hoặc tên đội có thể đã tồn tại.",
+          error:
+            "Could not save team. Tên đội có thể đã tồn tại. Error: " +
+            err.message,
         });
       }
 
       const teamId = this.lastID;
-      const insertPlayerSql = `INSERT INTO players (team_id, name, dob, type, notes) VALUES (?, ?, ?, ?, ?)`;
+      const insertPlayerSql = `INSERT INTO players (team_id, name, dob, type, notes, player_code) VALUES (?, ?, ?, ?, ?, ?)`;
 
       (async () => {
         try {
           for (const player of players) {
+            // Auto-generate Player Code
+            let autoPlayerCode;
+            try {
+              autoPlayerCode = await generatePlayerCode();
+            } catch (err) {
+              throw new Error(`Error generating player code: ${err.message}`);
+            }
+
             await new Promise((resolve, reject) => {
-              const { name, dob, type, notes, playerCode } = player;
+              const { name, dob, type, notes } = player;
               console.log("=== DEBUG POST TEAM: Player data ===");
-              console.log("player object:", player);
-              console.log("playerCode extracted:", playerCode);
+              console.log("player name:", name);
+              console.log("auto playerCode generated:", autoPlayerCode);
 
-              // Check for unique player code in DB
-              db.get(
-                "SELECT id FROM players WHERE player_code = ?",
-                [playerCode],
-                (err, row) => {
+              db.run(
+                insertPlayerSql,
+                [teamId, name, dob, type, notes, autoPlayerCode],
+                (err) => {
                   if (err) {
+                    console.error("Error inserting player:", err.message);
                     reject(err);
-                    return;
+                  } else {
+                    resolve();
                   }
-                  if (row) {
-                    reject(
-                      new Error(
-                        `Mã cầu thủ '${playerCode}' đã tồn tại trong hệ thống.`
-                      )
-                    );
-                    return;
-                  }
-
-                  db.run(
-                    `INSERT INTO players (team_id, name, dob, type, notes, player_code) VALUES (?, ?, ?, ?, ?, ?)`,
-                    [teamId, name, dob, type, notes, playerCode],
-                    (err) => {
-                      if (err) {
-                        console.error("Error inserting player:", err.message);
-                        reject(err);
-                      } else {
-                        resolve();
-                      }
-                    }
-                  );
                 }
               );
             });
@@ -291,9 +277,11 @@ router.post("/", async (req, res) => {
             );
           }
 
-          res
-            .status(201)
-            .json({ message: "Team registered successfully!", teamId: teamId });
+          res.status(201).json({
+            message: "Team registered successfully!",
+            teamId: teamId,
+            teamCode: autoTeamCode,
+          });
         } catch (err) {
           console.error("CRITICAL ERROR in POST /api/teams:", err);
           // Attempt to clean up the created team if player insertion fails
@@ -326,11 +314,10 @@ router.get("/debug-teams", (req, res) => {
 // PUT /api/teams/:id - Update a team's details
 router.put("/:id", teamOwnerMiddleware, async (req, res) => {
   const teamId = req.params.id;
-  const { teamCode, teamName, homeStadium, players } = req.body;
+  const { teamName, homeStadium, players } = req.body;
 
   console.log("=== PUT /api/teams/:id DEBUG ===");
   console.log("Team ID:", teamId);
-  console.log("teamCode:", teamCode, "type:", typeof teamCode);
   console.log("teamName:", teamName, "type:", typeof teamName);
   console.log("homeStadium:", homeStadium, "type:", typeof homeStadium);
   console.log(
@@ -340,14 +327,12 @@ router.put("/:id", teamOwnerMiddleware, async (req, res) => {
   console.log("Full body:", JSON.stringify(req.body, null, 2));
 
   if (
-    teamCode === undefined ||
     typeof teamName !== "string" ||
     typeof homeStadium !== "string" ||
     !Array.isArray(players) ||
     players.length === 0
   ) {
     console.log("❌ Validation failed:");
-    console.log("  teamCode === undefined?", teamCode === undefined);
     console.log(
       "  typeof teamName !== 'string'?",
       typeof teamName !== "string"
@@ -362,19 +347,6 @@ router.put("/:id", teamOwnerMiddleware, async (req, res) => {
       Array.isArray(players) && players.length === 0
     );
     return res.status(400).json({ error: "Invalid data provided." });
-  }
-
-  const normalizedCode = String(teamCode || "")
-    .trim()
-    .toUpperCase();
-  if (!normalizedCode) {
-    return res.status(400).json({ error: "Mã đội không được để trống." });
-  }
-
-  if (!TEAM_CODE_REGEX.test(normalizedCode)) {
-    return res.status(400).json({
-      error: "Mã đội phải theo định dạng FCxxx (ví dụ: FC001).",
-    });
   }
 
   const trimmedName = teamName.trim();
@@ -399,92 +371,77 @@ router.put("/:id", teamOwnerMiddleware, async (req, res) => {
     return res.status(400).json({ error: validationError });
   }
 
-  const updateTeamSql = `UPDATE teams SET team_code = ?, name = ?, home_stadium = ? WHERE id = ?`;
+  const updateTeamSql = `UPDATE teams SET name = ?, home_stadium = ? WHERE id = ?`;
 
-  db.run(
-    updateTeamSql,
-    [normalizedCode, trimmedName, trimmedStadium, teamId],
-    function (err) {
-      if (err) {
-        console.error("Error updating team:", err.message);
-        return res.status(500).json({ error: "Could not update team." });
-      }
+  db.run(updateTeamSql, [trimmedName, trimmedStadium, teamId], function (err) {
+    if (err) {
+      console.error("Error updating team:", err.message);
+      return res.status(500).json({ error: "Could not update team." });
+    }
 
-      // First, validate that new player codes don't conflict with OTHER teams
-      // (excluding the current team's players since we'll delete them)
-      (async () => {
-        try {
-          // Check each player code against other teams
-          for (const player of players) {
-            const { playerCode } = player;
-            const existingPlayer = await new Promise((resolve, reject) => {
-              db.get(
-                "SELECT id, team_id FROM players WHERE player_code = ? AND team_id != ?",
-                [playerCode, teamId],
-                (err, row) => {
-                  if (err) reject(err);
-                  else resolve(row);
-                }
-              );
-            });
-
-            if (existingPlayer) {
-              return res.status(400).json({
-                error: `Mã cầu thủ '${playerCode}' đã tồn tại trong đội khác.`,
-              });
-            }
+    // Delete old players and insert new ones with auto-generated player codes
+    (async () => {
+      try {
+        // Now safe to delete old players and insert new ones
+        const deletePlayersSql = `DELETE FROM players WHERE team_id = ?`;
+        db.run(deletePlayersSql, [teamId], async (err) => {
+          if (err) {
+            console.error("Error deleting old players:", err.message);
+            return res
+              .status(500)
+              .json({ error: "Could not update team players." });
           }
 
-          // Now safe to delete old players and insert new ones
-          const deletePlayersSql = `DELETE FROM players WHERE team_id = ?`;
-          db.run(deletePlayersSql, [teamId], async (err) => {
-            if (err) {
-              console.error("Error deleting old players:", err.message);
-              return res
-                .status(500)
-                .json({ error: "Could not update team players." });
-            }
+          // Insert new players with auto-generated player codes or preserve existing ones
+          try {
+            for (const player of players) {
+              // Use existing player code if available, otherwise generate new one
+              let playerCodeToUse = player.playerCode;
 
-            // Insert new players without redundant uniqueness checks
-            try {
-              for (const player of players) {
-                await new Promise((resolve, reject) => {
-                  const { name, dob, type, notes, playerCode } = player;
-
-                  db.run(
-                    `INSERT INTO players (team_id, name, dob, type, notes, player_code) VALUES (?, ?, ?, ?, ?, ?)`,
-                    [teamId, name, dob, type, notes, playerCode],
-                    (err) => {
-                      if (err) {
-                        console.error("Error inserting player:", err.message);
-                        reject(err);
-                      } else {
-                        resolve();
-                      }
-                    }
+              if (!playerCodeToUse) {
+                try {
+                  playerCodeToUse = await generatePlayerCode();
+                } catch (err) {
+                  throw new Error(
+                    `Error generating player code: ${err.message}`
                   );
-                });
+                }
               }
-              res.status(200).json({
-                message: "Team updated successfully!",
-                teamId: teamId,
-              });
-            } catch (err) {
-              res.status(500).json({
-                error:
-                  err.message || "An error occurred while updating players.",
+
+              await new Promise((resolve, reject) => {
+                const { name, dob, type, notes } = player;
+
+                db.run(
+                  `INSERT INTO players (team_id, name, dob, type, notes, player_code) VALUES (?, ?, ?, ?, ?, ?)`,
+                  [teamId, name, dob, type, notes, playerCodeToUse],
+                  (err) => {
+                    if (err) {
+                      console.error("Error inserting player:", err.message);
+                      reject(err);
+                    } else {
+                      resolve();
+                    }
+                  }
+                );
               });
             }
-          });
-        } catch (err) {
-          console.error("Error validating player codes:", err.message);
-          return res
-            .status(500)
-            .json({ error: "Could not validate player codes." });
-        }
-      })();
-    }
-  );
+            res.status(200).json({
+              message: "Team updated successfully!",
+              teamId: teamId,
+            });
+          } catch (err) {
+            res.status(500).json({
+              error: err.message || "An error occurred while updating players.",
+            });
+          }
+        });
+      } catch (err) {
+        res.status(500).json({
+          error: err.message || "An error occurred while updating the team.",
+        });
+      }
+    })();
+  });
 });
 
 // DELETE /api/teams/:id - Delete a team

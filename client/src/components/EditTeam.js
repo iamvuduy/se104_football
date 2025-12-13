@@ -232,13 +232,11 @@ const EditTeam = () => {
 
       // Validate player code
       const code = (player.playerCode || "").trim();
-      if (!code) {
-        playerError.playerCode = true;
-        hasPlayerCodeError = true;
-      } else if (playerCodeSet.has(code)) {
+      // Allow empty player code for new players (will be auto-generated)
+      if (code && playerCodeSet.has(code)) {
         playerError.playerCode = true;
         hasDuplicatePlayerCode = true;
-      } else {
+      } else if (code) {
         playerCodeSet.add(code);
       }
 
@@ -286,9 +284,7 @@ const EditTeam = () => {
       errorMessages.push("Tên cầu thủ không được để trống.");
     }
 
-    if (hasPlayerCodeError) {
-      errorMessages.push("Mã cầu thủ không được để trống.");
-    }
+    // Removed "Mã cầu thủ không được để trống" check since it's optional now
 
     if (hasDuplicatePlayerCode) {
       errorMessages.push("Mã cầu thủ bị trùng lặp.");
@@ -380,10 +376,12 @@ const EditTeam = () => {
                 id="teamCode"
                 className={`form-control ${
                   errors.teamCode ? "is-invalid" : ""
-                }`}
+                } ${teamCode ? "readonly-field" : ""}`}
                 value={teamCode}
                 onChange={(e) => setTeamCode(e.target.value.toUpperCase())}
                 required
+                readOnly={!!teamCode}
+                title={teamCode ? "Không thể sửa mã đội đã đăng ký" : ""}
               />
             </div>
             <div className="col-md-4">
@@ -440,14 +438,16 @@ const EditTeam = () => {
                       <input
                         type="text"
                         name="playerCode"
-                        className={`form-control ${
+                        className={`form-control readonly-field ${
                           errors.players?.[index]?.playerCode
                             ? "is-invalid"
                             : ""
                         }`}
                         value={player.playerCode || ""}
                         onChange={(e) => handlePlayerChange(index, e)}
-                        placeholder="VD: P001"
+                        placeholder="Tự động"
+                        readOnly={true}
+                        title="Mã cầu thủ được tạo tự động"
                       />
                     </td>
                     <td>

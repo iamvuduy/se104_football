@@ -177,9 +177,9 @@ const Navbar = () => {
       <div className="navbar-right">
         {user ? (
           <>
-            <span className="welcome-text">Welcome, {user.username}</span>
+            <span className="welcome-text">Xin chào, {user.username}</span>
             <button className="btn btn-logout" onClick={handleLogout}>
-              Logout
+              ĐĂNG XUẤT
             </button>
           </>
         ) : (
