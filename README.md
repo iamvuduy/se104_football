@@ -255,7 +255,6 @@ se104_football/
 
 1. Vào menu **"Đăng ký đội"**
 2. Điền thông tin đội:
-   - Mã đội (VD: FC001)
    - Tên đội
    - Sân nhà
 3. Thêm danh sách cầu thủ (tối thiểu theo quy định)
